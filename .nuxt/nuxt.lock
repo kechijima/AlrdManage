@@ -1,0 +1,9 @@
+{
+  "pid": 22320,
+  "startedAt": 1779950358602,
+  "command": "dev",
+  "cwd": "C:/Users/allja/Desktop/Workspace/AlrdManage",
+  "port": 3000,
+  "hostname": "::1",
+  "url": "http://[::1]:3000"
+}

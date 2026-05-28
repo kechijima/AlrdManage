@@ -1,0 +1,41 @@
+import type { Config } from 'tailwindcss'
+
+export default {
+  content: [
+    './components/**/*.{js,vue,ts}',
+    './layouts/**/*.vue',
+    './pages/**/*.vue',
+    './plugins/**/*.{js,ts}',
+    './app.vue',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        brand: {
+          50:  '#FFF0F0',
+          100: '#FFD6D6',
+          200: '#FFB3B3',
+          300: '#FF8080',
+          400: '#FF4040',
+          500: '#EA0000',
+          600: '#D10000',
+          700: '#B30000',
+          800: '#900000',
+          900: '#6B0000',
+        },
+        alrd: {
+          dark:   '#1A1A1A',
+          darker: '#111111',
+          red:    '#EA0000',
+          cream:  '#FAF8F8',
+          muted:  '#F5F0F0',
+        }
+      },
+      fontFamily: {
+        sans: ['Noto Sans JP', 'Inter', 'sans-serif'],
+        serif: ['Noto Serif JP', 'Georgia', 'serif'],
+      }
+    },
+  },
+  plugins: [],
+} satisfies Config
