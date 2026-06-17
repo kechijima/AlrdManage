@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ArrowLeft, Pencil, Upload, FileText, Image as ImageIcon, ExternalLink, Package } from 'lucide-vue-next'
+import { ArrowLeft, Pencil, Upload, FileText, Image as ImageIcon, ExternalLink, Package, X, Check } from 'lucide-vue-next'
 import { useAppStore } from '~/stores/app'
+import { MERCARI_CATEGORIES } from '~/types'
+import type { GoodsStatus, Platform } from '~/types'
 
 const store = useAppStore()
 const route = useRoute()
@@ -10,6 +12,71 @@ const customer = computed(() => store.customers.find(c => c.id === item.value?.s
 const member = computed(() => store.members.find(m => m.id === item.value?.assignedMemberId))
 
 const platformLabels: Record<string, string> = { mercari: 'メルカリ', yahoo_auction: 'ヤフオク', other: 'その他' }
+
+const goodsStatusLabels: Record<GoodsStatus, string> = {
+  received: '受領済', assessing: '査定中', preparing: '出品準備',
+  listed: '出品中', sold: '売却済', settled: '精算済', withdrawn: '取下げ',
+}
+
+// ===== 古物編集 =====
+const showEditForm = ref(false)
+const editForm = reactive({
+  name: '', mainCategory: '', subCategory: '', condition: '',
+  status: 'received' as GoodsStatus,
+  assessedValue: undefined as number | undefined,
+  platform: '' as Platform | '',
+  listingPrice: undefined as number | undefined,
+  listedAt: '', listingUrl: '',
+  soldPrice: undefined as number | undefined,
+  soldAt: '', platformFee: undefined as number | undefined,
+  shippingCost: undefined as number | undefined,
+  assignedMemberId: '', notes: '',
+})
+
+const editSubCategories = computed(() => MERCARI_CATEGORIES[editForm.mainCategory] ?? [])
+watch(() => editForm.mainCategory, () => { editForm.subCategory = '' })
+
+const openEdit = () => {
+  if (!item.value) return
+  const g = item.value
+  Object.assign(editForm, {
+    name: g.name, mainCategory: g.mainCategory, subCategory: g.subCategory,
+    condition: g.condition, status: g.status,
+    assessedValue: g.assessedValue, platform: g.platform ?? '',
+    listingPrice: g.listingPrice, listedAt: g.listedAt ?? '',
+    listingUrl: g.listingUrl ?? '',
+    soldPrice: g.soldPrice, soldAt: g.soldAt ?? '',
+    platformFee: g.platformFee, shippingCost: g.shippingCost,
+    assignedMemberId: g.assignedMemberId ?? '',
+    notes: g.notes ?? '',
+  })
+  showEditForm.value = true
+}
+
+const saveEdit = () => {
+  if (!item.value || !editForm.name) return
+  const profit = (editForm.soldPrice && editForm.platform !== '')
+    ? (editForm.soldPrice - (editForm.platformFee ?? 0) - (editForm.shippingCost ?? 0))
+    : item.value.profit
+  store.updateGoods(item.value.id, {
+    name: editForm.name, mainCategory: editForm.mainCategory,
+    subCategory: editForm.subCategory, condition: editForm.condition,
+    status: editForm.status,
+    assessedValue: editForm.assessedValue || undefined,
+    platform: (editForm.platform as Platform) || undefined,
+    listingPrice: editForm.listingPrice || undefined,
+    listedAt: editForm.listedAt || undefined,
+    listingUrl: editForm.listingUrl || undefined,
+    soldPrice: editForm.soldPrice || undefined,
+    soldAt: editForm.soldAt || undefined,
+    platformFee: editForm.platformFee || undefined,
+    shippingCost: editForm.shippingCost || undefined,
+    profit: profit || undefined,
+    assignedMemberId: editForm.assignedMemberId || undefined,
+    notes: editForm.notes || undefined,
+  })
+  showEditForm.value = false
+}
 
 const statusFlow = [
   { key: 'received', label: '受領済' },
@@ -33,7 +100,7 @@ const currentStep = computed(() => statusFlow.findIndex(s => s.key === item.valu
           <NuxtLink to="/goods" class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
             <ArrowLeft class="w-4 h-4" />戻る
           </NuxtLink>
-          <button class="btn-secondary"><Pencil class="w-4 h-4" />編集</button>
+          <button class="btn-secondary" @click="openEdit"><Pencil class="w-4 h-4" />編集</button>
         </div>
 
         <!-- Header -->
@@ -175,5 +242,108 @@ const currentStep = computed(() => statusFlow.findIndex(s => s.key === item.valu
 
       </div>
     </main>
+
+    <!-- 古物編集モーダル -->
+    <div v-if="showEditForm" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 my-auto">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-gray-900">古物商品を編集</h3>
+          <button @click="showEditForm = false" class="text-gray-400 hover:text-gray-600"><X class="w-5 h-5" /></button>
+        </div>
+
+        <div>
+          <label class="label">商品名 <span class="text-red-500">*</span></label>
+          <input v-model="editForm.name" class="input" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label">大カテゴリ</label>
+            <select v-model="editForm.mainCategory" class="input">
+              <option v-for="cat in Object.keys(MERCARI_CATEGORIES)" :key="cat" :value="cat">{{ cat }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">小カテゴリ</label>
+            <select v-model="editForm.subCategory" class="input">
+              <option v-for="sub in editSubCategories" :key="sub" :value="sub">{{ sub }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">状態</label>
+            <input v-model="editForm.condition" class="input" placeholder="未使用・美品・傷あり..." />
+          </div>
+          <div>
+            <label class="label">ステータス</label>
+            <select v-model="editForm.status" class="input">
+              <option v-for="(label, key) in goodsStatusLabels" :key="key" :value="key">{{ label }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">査定額（円）</label>
+            <input v-model.number="editForm.assessedValue" type="number" class="input" />
+          </div>
+          <div>
+            <label class="label">プラットフォーム</label>
+            <select v-model="editForm.platform" class="input">
+              <option value="">未定</option>
+              <option value="mercari">メルカリ</option>
+              <option value="yahoo_auction">ヤフオク</option>
+              <option value="other">その他</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">出品価格（円）</label>
+            <input v-model.number="editForm.listingPrice" type="number" class="input" />
+          </div>
+          <div>
+            <label class="label">出品日</label>
+            <input v-model="editForm.listedAt" type="date" class="input" />
+          </div>
+          <div>
+            <label class="label">売却額（円）</label>
+            <input v-model.number="editForm.soldPrice" type="number" class="input" />
+          </div>
+          <div>
+            <label class="label">売却日</label>
+            <input v-model="editForm.soldAt" type="date" class="input" />
+          </div>
+          <div>
+            <label class="label">手数料（円）</label>
+            <input v-model.number="editForm.platformFee" type="number" class="input" />
+          </div>
+          <div>
+            <label class="label">送料（円）</label>
+            <input v-model.number="editForm.shippingCost" type="number" class="input" />
+          </div>
+        </div>
+        <div v-if="editForm.soldPrice && editForm.soldPrice > 0" class="p-3 bg-emerald-50 rounded-lg text-sm">
+          純利益目安: <span class="font-bold text-emerald-700">
+            ¥{{ (editForm.soldPrice - (editForm.platformFee ?? 0) - (editForm.shippingCost ?? 0)).toLocaleString() }}
+          </span>
+        </div>
+        <div>
+          <label class="label">出品URL</label>
+          <input v-model="editForm.listingUrl" class="input" placeholder="https://..." />
+        </div>
+        <div>
+          <label class="label">担当メンバー</label>
+          <select v-model="editForm.assignedMemberId" class="input">
+            <option value="">未割当</option>
+            <option v-for="m in store.members" :key="m.id" :value="m.id">{{ m.name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">備考</label>
+          <textarea v-model="editForm.notes" class="input" rows="2"></textarea>
+        </div>
+        <div class="flex gap-2 justify-end pt-2">
+          <button class="btn-secondary" @click="showEditForm = false">キャンセル</button>
+          <button class="btn-primary" @click="saveEdit" :disabled="!editForm.name">
+            <Check class="w-4 h-4" />保存
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>

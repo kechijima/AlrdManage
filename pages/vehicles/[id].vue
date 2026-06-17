@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeft, Pencil, Plus, Trash2, Car, MapPin, X, Check } from 'lucide-vue-next'
 import { useAppStore } from '~/stores/app'
+import type { VehicleStatus, VehicleType } from '~/types'
 
 const store = useAppStore()
 const route = useRoute()
@@ -47,6 +48,61 @@ const expenseCategoryColors: Record<string, string> = {
 const getMember = (id?: string) => store.members.find(m => m.id === id)
 const getFP = (id?: string) => store.fps.find(f => f.id === id)
 const getCustomer = (id?: string) => store.customers.find(c => c.id === id)
+
+const vehicleStatusLabels: Record<VehicleStatus, string> = {
+  inStock: '在庫中', negotiating: '商談中', ordered: '受注済', purchasing: '仕入れ中',
+  arrived: '入庫済', consigning: '委託中', contracted: '成約',
+  nameTransfer: '名義変更中', delivered: '納車済', settled: '精算済', cancelled: 'キャンセル',
+}
+
+// ===== 車両編集 =====
+const showEditForm = ref(false)
+const editForm = reactive({
+  maker: '', model: '', year: 0, mileage: 0, color: '', vin: '',
+  engineCC: undefined as number | undefined,
+  inspectionDate: '',
+  purchasePrice: 0, listPrice: 0,
+  purchaseFrom: '', pickupLocation: '', purchasedAt: '',
+  type: 'inventory' as VehicleType,
+  status: 'inStock' as VehicleStatus,
+  assignedMemberId: '', referredByFpId: '', notes: '',
+})
+
+const openEdit = () => {
+  if (!vehicle.value) return
+  const v = vehicle.value
+  Object.assign(editForm, {
+    maker: v.maker, model: v.model, year: v.year, mileage: v.mileage,
+    color: v.color, vin: v.vin, engineCC: v.engineCC,
+    inspectionDate: v.inspectionDate ?? '',
+    purchasePrice: v.purchasePrice, listPrice: v.listPrice,
+    purchaseFrom: v.purchaseFrom ?? '', pickupLocation: v.pickupLocation,
+    purchasedAt: v.purchasedAt ?? '', type: v.type, status: v.status,
+    assignedMemberId: v.assignedMemberId ?? '',
+    referredByFpId: v.referredByFpId ?? '',
+    notes: v.notes ?? '',
+  })
+  showEditForm.value = true
+}
+
+const saveEdit = () => {
+  if (!vehicle.value || !editForm.maker || !editForm.model) return
+  store.updateVehicle(vehicle.value.id, {
+    maker: editForm.maker, model: editForm.model, year: editForm.year,
+    mileage: editForm.mileage, color: editForm.color, vin: editForm.vin,
+    engineCC: editForm.engineCC || undefined,
+    inspectionDate: editForm.inspectionDate || undefined,
+    purchasePrice: editForm.purchasePrice, listPrice: editForm.listPrice,
+    purchaseFrom: editForm.purchaseFrom || undefined,
+    pickupLocation: editForm.pickupLocation,
+    purchasedAt: editForm.purchasedAt || undefined,
+    type: editForm.type, status: editForm.status,
+    assignedMemberId: editForm.assignedMemberId || undefined,
+    referredByFpId: editForm.referredByFpId || undefined,
+    notes: editForm.notes || undefined,
+  })
+  showEditForm.value = false
+}
 
 // ===== 経費追加 =====
 const showExpenseForm = ref(false)
@@ -101,7 +157,7 @@ const activeTab = ref<'info' | 'expenses' | 'profit'>('info')
             <ArrowLeft class="w-4 h-4" />戻る
           </NuxtLink>
           <div class="flex gap-2">
-            <button class="btn-secondary"><Pencil class="w-4 h-4" />編集</button>
+            <button class="btn-secondary" @click="openEdit"><Pencil class="w-4 h-4" />編集</button>
           </div>
         </div>
 
@@ -301,6 +357,105 @@ const activeTab = ref<'info' | 'expenses' | 'profit'>('info')
 
       </div>
     </main>
+
+    <!-- 車両編集モーダル -->
+    <div v-if="showEditForm" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 my-auto">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-gray-900">車両情報を編集</h3>
+          <button @click="showEditForm = false" class="text-gray-400 hover:text-gray-600"><X class="w-5 h-5" /></button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label">メーカー <span class="text-red-500">*</span></label>
+            <input v-model="editForm.maker" class="input" placeholder="トヨタ" />
+          </div>
+          <div>
+            <label class="label">車種 <span class="text-red-500">*</span></label>
+            <input v-model="editForm.model" class="input" placeholder="アルファード" />
+          </div>
+          <div>
+            <label class="label">年式</label>
+            <input v-model.number="editForm.year" type="number" class="input" />
+          </div>
+          <div>
+            <label class="label">走行距離（km）</label>
+            <input v-model.number="editForm.mileage" type="number" class="input" />
+          </div>
+          <div>
+            <label class="label">カラー</label>
+            <input v-model="editForm.color" class="input" />
+          </div>
+          <div>
+            <label class="label">車台番号（VIN）</label>
+            <input v-model="editForm.vin" class="input" />
+          </div>
+          <div>
+            <label class="label">販売価格（円）</label>
+            <input v-model.number="editForm.listPrice" type="number" class="input" />
+          </div>
+          <div>
+            <label class="label">仕入れ価格（円）</label>
+            <input v-model.number="editForm.purchasePrice" type="number" class="input" />
+          </div>
+          <div>
+            <label class="label">引き取り場所</label>
+            <input v-model="editForm.pickupLocation" class="input" />
+          </div>
+          <div>
+            <label class="label">仕入れ先</label>
+            <input v-model="editForm.purchaseFrom" class="input" />
+          </div>
+          <div>
+            <label class="label">仕入れ日</label>
+            <input v-model="editForm.purchasedAt" type="date" class="input" />
+          </div>
+          <div>
+            <label class="label">車検満了日</label>
+            <input v-model="editForm.inspectionDate" type="date" class="input" />
+          </div>
+          <div>
+            <label class="label">種別</label>
+            <select v-model="editForm.type" class="input">
+              <option value="inventory">在庫販売</option>
+              <option value="order">注文販売</option>
+              <option value="consignment">委託販売</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">ステータス</label>
+            <select v-model="editForm.status" class="input">
+              <option v-for="(label, key) in vehicleStatusLabels" :key="key" :value="key">{{ label }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">担当メンバー</label>
+            <select v-model="editForm.assignedMemberId" class="input">
+              <option value="">未割当</option>
+              <option v-for="m in store.members" :key="m.id" :value="m.id">{{ m.name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">FP紹介</label>
+            <select v-model="editForm.referredByFpId" class="input">
+              <option value="">なし</option>
+              <option v-for="fp in store.fps" :key="fp.id" :value="fp.id">{{ fp.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="label">備考</label>
+          <textarea v-model="editForm.notes" class="input" rows="2"></textarea>
+        </div>
+        <div class="flex gap-2 justify-end pt-2">
+          <button class="btn-secondary" @click="showEditForm = false">キャンセル</button>
+          <button class="btn-primary" @click="saveEdit" :disabled="!editForm.maker || !editForm.model">
+            <Check class="w-4 h-4" />保存
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- 経費追加モーダル -->
     <div v-if="showExpenseForm" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
