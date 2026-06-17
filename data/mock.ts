@@ -1,9 +1,9 @@
-import type { Vehicle, Sale, Customer, FP, GoodsItem, Task, Member, VehicleExpense } from '~/types'
+import type { Vehicle, Sale, Customer, FP, GoodsItem, Task, Member, VehicleExpense, FeePattern, Prospect } from '~/types'
 
 export const mockMembers: Member[] = [
-  { id: 'm1', name: '田中 太郎', email: 'tanaka@alrd.co.jp', role: 'admin', branchId: 'b1', status: 'active', createdAt: '2024-01-01' },
-  { id: 'm2', name: '鈴木 花子', email: 'suzuki@alrd.co.jp', role: 'staff', branchId: 'b1', status: 'active', createdAt: '2024-02-01' },
-  { id: 'm3', name: '佐藤 次郎', email: 'sato@alrd.co.jp', role: 'staff', branchId: 'b1', status: 'active', createdAt: '2024-03-01' },
+  { id: 'm1', name: '田中 太郎', email: 'tanaka@alrd.co.jp', role: 'admin', division: 'both', branchId: 'b1', status: 'active', createdAt: '2024-01-01' },
+  { id: 'm2', name: '鈴木 花子', email: 'suzuki@alrd.co.jp', role: 'staff', division: 'goods', branchId: 'b1', status: 'active', createdAt: '2024-02-01' },
+  { id: 'm3', name: '佐藤 次郎', email: 'sato@alrd.co.jp', role: 'staff', division: 'vehicle', branchId: 'b1', status: 'active', createdAt: '2024-03-01' },
 ]
 
 export const mockFPs: FP[] = [
@@ -129,7 +129,9 @@ export const mockSales: Sale[] = [
 
 export const mockGoods: GoodsItem[] = [
   {
-    id: 'g1', name: 'ルイヴィトン ショルダーバッグ', category: 'バッグ', condition: 'AB',
+    id: 'g1', name: 'ルイヴィトン ショルダーバッグ',
+    mainCategory: 'レディース', subCategory: 'バッグ',
+    condition: 'AB',
     sourceCustomerId: 'c1', sourceFpId: 'fp1', receivedAt: '2024-11-01',
     assessedValue: 85000, platform: 'mercari', listingPrice: 98000,
     listedAt: '2024-11-05', soldPrice: 92000, soldAt: '2024-11-20',
@@ -137,19 +139,25 @@ export const mockGoods: GoodsItem[] = [
     assignedMemberId: 'm2', branchId: 'b1', status: 'settled',
   },
   {
-    id: 'g2', name: 'ロレックス デイトジャスト', category: '時計', condition: 'A',
+    id: 'g2', name: 'ロレックス デイトジャスト',
+    mainCategory: 'メンズ', subCategory: '時計',
+    condition: 'A',
     sourceCustomerId: 'c2', sourceFpId: 'fp2', receivedAt: '2024-11-10',
     assessedValue: 650000, platform: 'yahoo_auction', listingPrice: 720000,
     listedAt: '2024-11-15', listingUrl: 'https://auctions.yahoo.co.jp/xxx',
     assignedMemberId: 'm1', branchId: 'b1', status: 'listed',
   },
   {
-    id: 'g3', name: 'ゴヤール トートバッグ', category: 'バッグ', condition: 'B',
+    id: 'g3', name: 'ゴヤール トートバッグ',
+    mainCategory: 'レディース', subCategory: 'バッグ',
+    condition: 'B',
     sourceCustomerId: 'c3', sourceFpId: 'fp1', receivedAt: '2024-11-25',
     assessedValue: 45000, assignedMemberId: 'm2', branchId: 'b1', status: 'assessing',
   },
   {
-    id: 'g4', name: 'ブルガリ ネックレス', category: 'ジュエリー', condition: 'S',
+    id: 'g4', name: 'ブルガリ ネックレス',
+    mainCategory: 'レディース', subCategory: 'アクセサリー・ジュエリー',
+    condition: 'S',
     sourceCustomerId: 'c4', sourceFpId: 'fp3', receivedAt: '2024-12-01',
     assignedMemberId: 'm3', branchId: 'b1', status: 'received',
   },
@@ -163,4 +171,87 @@ export const mockTasks: Task[] = [
   { id: 't5', title: 'ゴヤールバッグ 査定完了', relatedType: 'goods', relatedId: 'g3', assignedMemberId: 'm2', dueDate: '2024-12-07', priority: 'low', status: 'todo', branchId: 'b1', createdById: 'm1', createdAt: '2024-12-02' },
   { id: 't6', title: 'BMW 3シリーズ 納車前点検', relatedType: 'vehicle', relatedId: 'v3', assignedMemberId: 'm1', dueDate: '2024-12-15', priority: 'medium', status: 'todo', branchId: 'b1', createdById: 'm1', createdAt: '2024-12-03' },
   { id: 't7', title: 'プリウス 納車完了確認', relatedType: 'sale', relatedId: 's1', assignedMemberId: 'm1', dueDate: '2024-12-06', priority: 'low', status: 'done', branchId: 'b1', createdById: 'm1', createdAt: '2024-12-01' },
+]
+
+// ===== フィーパターン =====
+export const mockFeePatterns: FeePattern[] = [
+  {
+    id: 'fee1', name: 'FP紹介料（車両）', targetBusiness: 'vehicle', targetRole: 'fp',
+    appliedTo: 'contractPrice', rate: 2.0, branchId: 'b1', isActive: true,
+    notes: '車両販売における成約時のFP紹介料。契約金額の2%。',
+    createdAt: '2024-01-01',
+  },
+  {
+    id: 'fee2', name: 'FP紹介料（古物）', targetBusiness: 'goods', targetRole: 'fp',
+    appliedTo: 'soldPrice', rate: 3.0, branchId: 'b1', isActive: true,
+    notes: '古物売却時のFP紹介料。売却額の3%。',
+    createdAt: '2024-01-01',
+  },
+  {
+    id: 'fee3', name: '担当者インセンティブ（車両）', targetBusiness: 'vehicle', targetRole: 'member',
+    appliedTo: 'grossProfit', rate: 5.0, branchId: 'b1', isActive: true,
+    notes: '車両販売の粗利に対する担当者インセンティブ。',
+    createdAt: '2024-01-01',
+  },
+  {
+    id: 'fee4', name: '担当者インセンティブ（古物）', targetBusiness: 'goods', targetRole: 'member',
+    appliedTo: 'soldPrice', rate: 2.0, branchId: 'b1', isActive: true,
+    notes: '古物売却額に対する担当者インセンティブ。',
+    createdAt: '2024-01-01',
+  },
+  {
+    id: 'fee5', name: 'FP紹介料（全事業）', targetBusiness: 'all', targetRole: 'fp',
+    appliedTo: 'grossProfit', rate: 10.0, branchId: 'b1', isActive: false,
+    notes: '試験的な全事業対応フィーパターン（現在無効）。',
+    createdAt: '2024-06-01',
+  },
+]
+
+// ===== 見込案件 =====
+export const mockProspects: Prospect[] = [
+  {
+    id: 'p1', title: 'アルファード 35年式 買取見込み',
+    type: 'purchase', vehicleMaker: 'トヨタ', vehicleModel: 'アルファード',
+    estimatedPrice: 3500000, estimatedCost: 2800000,
+    deadline: '2024-12-20', status: 'negotiating',
+    assignedMemberId: 'm1', referredByFpId: 'fp1',
+    branchId: 'b1', notes: '顧客から直接持ち込み。車検残り1年。',
+    createdAt: '2024-12-01',
+  },
+  {
+    id: 'p2', title: 'ヴェルファイア 販売案件',
+    type: 'sale', vehicleMaker: 'トヨタ', vehicleModel: 'ヴェルファイア',
+    estimatedPrice: 5200000, estimatedCost: 4100000,
+    deadline: '2024-12-31', status: 'open',
+    assignedMemberId: 'm3', referredByFpId: 'fp2',
+    branchId: 'b1', notes: 'FP経由で購入希望の問い合わせあり。',
+    createdAt: '2024-12-02',
+  },
+  {
+    id: 'p3', title: 'ランドクルーザー 買取検討',
+    type: 'purchase', vehicleMaker: 'トヨタ', vehicleModel: 'ランドクルーザー',
+    estimatedPrice: 8000000, estimatedCost: 6500000,
+    deadline: '2025-01-15', status: 'open',
+    assignedMemberId: 'm1',
+    branchId: 'b1', notes: '高額案件のため慎重に検討中。',
+    createdAt: '2024-12-03',
+  },
+  {
+    id: 'p4', title: '中村様 BMW 5シリーズ 販売',
+    type: 'sale', vehicleMaker: 'BMW', vehicleModel: '5シリーズ',
+    estimatedPrice: 4800000, estimatedCost: 3900000,
+    deadline: '2024-12-15', status: 'contracted',
+    assignedMemberId: 'm2', referredByFpId: 'fp3',
+    branchId: 'b1',
+    createdAt: '2024-11-20',
+  },
+  {
+    id: 'p5', title: 'ポルシェ カイエン 問い合わせ',
+    type: 'purchase', vehicleMaker: 'ポルシェ', vehicleModel: 'カイエン',
+    estimatedPrice: 9500000, estimatedCost: 7800000,
+    deadline: '2025-01-31', status: 'lost',
+    assignedMemberId: 'm3',
+    branchId: 'b1', notes: '他社に流れた。',
+    createdAt: '2024-11-15',
+  },
 ]

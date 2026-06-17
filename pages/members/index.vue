@@ -1,12 +1,29 @@
 <script setup lang="ts">
-import { Plus, UserCog, Mail, Shield } from 'lucide-vue-next'
+import { Plus, UserCog, Mail, Shield, Car, Package, LayoutGrid } from 'lucide-vue-next'
 import { mockMembers, mockTasks } from '~/data/mock'
+import type { MemberDivision } from '~/types'
 
 const roleLabels: Record<string, string> = { admin: '管理者', staff: 'スタッフ', viewer: '閲覧のみ' }
 const roleColors: Record<string, string> = {
   admin: 'bg-red-100 text-red-700',
   staff: 'bg-brand-100 text-brand-700',
   viewer: 'bg-gray-100 text-gray-600',
+}
+
+const divisionLabels: Record<MemberDivision, string> = {
+  vehicle: '車担当',
+  goods: '古物担当',
+  both: '両方',
+}
+const divisionColors: Record<MemberDivision, string> = {
+  vehicle: 'bg-blue-100 text-blue-700',
+  goods: 'bg-amber-100 text-amber-700',
+  both: 'bg-purple-100 text-purple-700',
+}
+const divisionIcons: Record<MemberDivision, any> = {
+  vehicle: Car,
+  goods: Package,
+  both: LayoutGrid,
 }
 
 const memberStats = computed(() => mockMembers.map(m => ({
@@ -31,7 +48,7 @@ const memberStats = computed(() => mockMembers.map(m => ({
 
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <div v-for="m in memberStats" :key="m.id" class="card p-5">
-          <div class="flex items-start justify-between mb-4">
+          <div class="flex items-start justify-between mb-3">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 rounded-full bg-brand-500 flex items-center justify-center text-white text-xl font-bold">
                 {{ m.name[0] }}
@@ -45,6 +62,14 @@ const memberStats = computed(() => mockMembers.map(m => ({
               </div>
             </div>
             <span :class="['badge', roleColors[m.role]]">{{ roleLabels[m.role] }}</span>
+          </div>
+
+          <!-- 担当区分バッジ -->
+          <div class="mb-4">
+            <span :class="['badge gap-1.5', divisionColors[m.division]]">
+              <component :is="divisionIcons[m.division]" class="w-3 h-3" />
+              {{ divisionLabels[m.division] }}
+            </span>
           </div>
 
           <div class="grid grid-cols-2 gap-3 mb-4">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, Car, ShoppingCart, Users, Handshake, Package, CheckSquare, UserCog, ChevronDown, Menu, X, Building2 } from 'lucide-vue-next'
+import { BarChart3, Car, ShoppingCart, Users, Handshake, Package, CheckSquare, UserCog, ChevronDown, Menu, X, Building2, Target, Percent } from 'lucide-vue-next'
 
 const route = useRoute()
 const isMobileOpen = ref(false)
@@ -11,6 +11,8 @@ const navItems = [
   { label: '顧客管理', icon: Users, href: '/customers' },
   { label: 'FP管理', icon: Handshake, href: '/fps' },
   { label: '古物商品', icon: Package, href: '/goods' },
+  { label: '見込管理', icon: Target, href: '/prospects' },
+  { label: 'フィー管理', icon: Percent, href: '/fees' },
   { label: 'タスク', icon: CheckSquare, href: '/tasks' },
   { label: 'メンバー管理', icon: UserCog, href: '/members' },
 ]

@@ -10,11 +10,14 @@ export interface Branch {
 
 // ===== メンバー =====
 export type MemberRole = 'admin' | 'staff' | 'viewer'
+export type MemberDivision = 'vehicle' | 'goods' | 'both'
+
 export interface Member {
   id: string
   name: string
   email: string
   role: MemberRole
+  division: MemberDivision  // 車担当・古物担当・両方
   branchId: string
   status: Status
   createdAt: string
@@ -75,7 +78,7 @@ export interface Vehicle {
   inspectionDate?: string
   purchasePrice: number
   purchaseFrom?: string
-  pickupLocation: string   // 引き取り場所（車名と合わせて一意キー）
+  pickupLocation: string
   purchasedAt?: string
   listPrice: number
   consignmentOwnerId?: string
@@ -156,6 +159,23 @@ export interface Sale {
   loanApplications?: LoanApplication[]
 }
 
+// ===== メルカリカテゴリ =====
+export const MERCARI_CATEGORIES: Record<string, string[]> = {
+  'レディース': ['バッグ', '財布・ケース', '時計', 'アクセサリー・ジュエリー', 'ファッション小物', '衣類', 'シューズ'],
+  'メンズ': ['バッグ', '財布・ケース', '時計', 'アクセサリー', 'ファッション小物', '衣類', 'シューズ'],
+  '家電・スマホ・カメラ': ['スマートフォン', 'カメラ', '生活家電', 'PC・周辺機器', 'オーディオ機器'],
+  'インテリア・住まい・小物': ['食器・グラス', 'アート・美術品', 'アンティーク・コレクタブル', '家具', 'インテリア雑貨'],
+  'おもちゃ・ホビー・グッズ': ['フィギュア', 'コレクション', 'トレーディングカード', 'ゲーム機本体'],
+  'スポーツ・レジャー': ['ゴルフ', 'アウトドア用品', 'フィットネス・トレーニング', 'スポーツ用品'],
+  '音楽・楽器': ['楽器', 'CD・レコード', '音響機材'],
+  '本・雑誌・漫画': ['本・書籍', '雑誌', 'コミック・漫画'],
+  'チケット': ['コンサート・音楽', 'スポーツ観戦', 'その他チケット'],
+  'ゲーム・ソフト': ['ゲームソフト', 'ゲーム機本体', 'ゲームグッズ'],
+  'ベビー・キッズ': ['おもちゃ', 'キッズファッション', 'ベビー用品'],
+  'コスメ・香水・美容': ['コスメ・メイクアップ', '香水', 'スキンケア・基礎化粧品'],
+  'その他': ['その他'],
+}
+
 // ===== 古物商品 =====
 export type GoodsStatus =
   | 'received'    // 受領済
@@ -171,7 +191,8 @@ export type Platform = 'mercari' | 'yahoo_auction' | 'other'
 export interface GoodsItem {
   id: string
   name: string
-  category: string
+  mainCategory: string   // メルカリ大カテゴリ
+  subCategory: string    // メルカリ小カテゴリ
   condition: string
   sourceCustomerId: string
   sourceFpId: string
@@ -202,10 +223,49 @@ export interface GoodsAttachment {
   uploadedAt: string
 }
 
+// ===== フィーパターン =====
+export type FeeTargetBusiness = 'vehicle' | 'goods' | 'all'
+export type FeeTargetRole = 'fp' | 'member'
+export type FeeAppliedTo = 'contractPrice' | 'grossProfit' | 'soldPrice' | 'listPrice'
+
+export interface FeePattern {
+  id: string
+  name: string
+  targetBusiness: FeeTargetBusiness
+  targetRole: FeeTargetRole
+  appliedTo: FeeAppliedTo
+  rate: number         // % (例: 2.5 → 2.5%)
+  branchId: string
+  isActive: boolean
+  notes?: string
+  createdAt: string
+}
+
+// ===== 見込管理 =====
+export type ProspectType = 'sale' | 'purchase'
+export type ProspectStatus = 'open' | 'negotiating' | 'contracted' | 'lost'
+
+export interface Prospect {
+  id: string
+  title: string
+  type: ProspectType           // 販売・買取
+  vehicleMaker?: string        // メーカー
+  vehicleModel?: string        // 車種
+  estimatedPrice: number       // 想定金額
+  estimatedCost?: number       // 想定原価（粗利 = estimatedPrice - estimatedCost）
+  deadline?: string            // 期限
+  status: ProspectStatus
+  assignedMemberId?: string
+  referredByFpId?: string
+  branchId: string
+  notes?: string
+  createdAt: string
+}
+
 // ===== タスク =====
 export type TaskStatus = 'todo' | 'inProgress' | 'done' | 'cancelled'
 export type TaskPriority = 'high' | 'medium' | 'low'
-export type TaskRelatedType = 'vehicle' | 'sale' | 'goods' | 'customer' | 'fp'
+export type TaskRelatedType = 'vehicle' | 'sale' | 'goods' | 'customer' | 'fp' | 'prospect'
 
 export interface Task {
   id: string

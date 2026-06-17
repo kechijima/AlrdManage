@@ -1,15 +1,25 @@
 <script setup lang="ts">
 import { ArrowLeft, Upload, X, FileText, ImageIcon } from 'lucide-vue-next'
 import { mockFPs, mockCustomers, mockMembers } from '~/data/mock'
+import { MERCARI_CATEGORIES } from '~/types'
 
 const form = reactive({
-  name: '', category: '', condition: '', sourceFpId: '', sourceCustomerId: '',
+  name: '', mainCategory: '', subCategory: '', condition: '',
+  sourceFpId: '', sourceCustomerId: '',
   receivedAt: '', assessedValue: undefined as number | undefined,
   platform: '', listingPrice: undefined as number | undefined,
   assignedMemberId: '', notes: '',
 })
 
-const attachments = ref<{ name: string; type: string; preview?: string }[]>([])
+const subCategories = computed(() => {
+  return form.mainCategory ? MERCARI_CATEGORIES[form.mainCategory] ?? [] : []
+})
+
+watch(() => form.mainCategory, () => {
+  form.subCategory = ''
+})
+
+const attachments = ref<{ name: string; type: string }[]>([])
 
 const handleFileChange = (e: Event) => {
   const files = (e.target as HTMLInputElement).files
@@ -37,26 +47,30 @@ const handleFileChange = (e: Event) => {
               <label class="label">商品名 <span class="text-red-500">*</span></label>
               <input v-model="form.name" class="input" placeholder="ルイヴィトン ショルダーバッグ" />
             </div>
+            <!-- メルカリカテゴリ（大カテゴリ → 小カテゴリ） -->
             <div>
-              <label class="label">カテゴリ</label>
-              <select v-model="form.category" class="input">
+              <label class="label">大カテゴリ <span class="text-red-500">*</span></label>
+              <select v-model="form.mainCategory" class="input">
                 <option value="">選択してください</option>
-                <option>バッグ</option>
-                <option>時計</option>
-                <option>ジュエリー</option>
-                <option>衣類</option>
-                <option>その他</option>
+                <option v-for="cat in Object.keys(MERCARI_CATEGORIES)" :key="cat" :value="cat">{{ cat }}</option>
               </select>
             </div>
             <div>
+              <label class="label">小カテゴリ <span class="text-red-500">*</span></label>
+              <select v-model="form.subCategory" class="input" :disabled="!form.mainCategory">
+                <option value="">{{ form.mainCategory ? '選択してください' : '大カテゴリを先に選択' }}</option>
+                <option v-for="sub in subCategories" :key="sub" :value="sub">{{ sub }}</option>
+              </select>
+            </div>
+            <div class="col-span-2">
               <label class="label">状態</label>
               <select v-model="form.condition" class="input">
                 <option value="">選択してください</option>
-                <option>S（未使用）</option>
-                <option>A（良好）</option>
-                <option>AB（やや良）</option>
-                <option>B（使用感あり）</option>
-                <option>C（傷あり）</option>
+                <option value="S">S（未使用）</option>
+                <option value="A">A（良好）</option>
+                <option value="AB">AB（やや良）</option>
+                <option value="B">B（使用感あり）</option>
+                <option value="C">C（傷あり）</option>
               </select>
             </div>
           </div>
