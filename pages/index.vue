@@ -1,66 +1,65 @@
 <script setup lang="ts">
 import { TrendingUp, Car, AlertCircle, ArrowUp, ChevronRight } from 'lucide-vue-next'
-import { mockVehicles, mockSales, mockGoods, mockTasks, mockExpenses, mockFPs } from '~/data/mock'
+import { useAppStore } from '~/stores/app'
+
+const store = useAppStore()
 
 // ---- 利益計算ヘルパー ----
 const calcProfit = (vehicleId: string) => {
-  const v = mockVehicles.find(x => x.id === vehicleId)
+  const v = store.vehicles.find(x => x.id === vehicleId)
   if (!v) return null
-  const expenses = mockExpenses.filter(e => e.vehicleId === vehicleId).reduce((s, e) => s + e.amount, 0)
+  const expenses = store.expenses.filter(e => e.vehicleId === vehicleId).reduce((s, e) => s + e.amount, 0)
   const gross = v.listPrice - v.purchasePrice
   const net = gross - expenses
   return { gross, expenses, net, margin: v.listPrice > 0 ? ((net / v.listPrice) * 100) : 0 }
 }
 
 // ---- KPI ----
-const deliveredSales = mockSales.filter(s => s.status === 'delivered')
-const thisMonthRevenue = deliveredSales.reduce((s, sale) => s + sale.contractPrice, 0)
-const thisMonthProfit = deliveredSales.reduce((s, sale) => {
+const deliveredSales = computed(() => store.sales.filter(s => s.status === 'delivered'))
+const thisMonthRevenue = computed(() => deliveredSales.value.reduce((s, sale) => s + sale.contractPrice, 0))
+const thisMonthProfit = computed(() => deliveredSales.value.reduce((s, sale) => {
   const p = calcProfit(sale.vehicleId)
   return s + (p?.net ?? 0)
-}, 0)
-const profitMargin = thisMonthRevenue > 0 ? ((thisMonthProfit / thisMonthRevenue) * 100).toFixed(1) : '0'
+}, 0))
+const profitMargin = computed(() => thisMonthRevenue.value > 0 ? ((thisMonthProfit.value / thisMonthRevenue.value) * 100).toFixed(1) : '0')
 
-// ---- 見込売上（在庫中・商談中・受注・成約・名義変更中） ----
+// ---- 見込売上 ----
 const prospectStatuses = ['inStock', 'negotiating', 'ordered', 'arrived', 'consigning', 'contracted', 'nameTransfer']
-const prospectVehicles = mockVehicles.filter(v => prospectStatuses.includes(v.status))
-const prospectRevenue = prospectVehicles.reduce((s, v) => s + v.listPrice, 0)
-const prospectProfit = prospectVehicles.reduce((s, v) => {
+const prospectVehicles = computed(() => store.vehicles.filter(v => prospectStatuses.includes(v.status)))
+const prospectRevenue = computed(() => prospectVehicles.value.reduce((s, v) => s + v.listPrice, 0))
+const prospectProfit = computed(() => prospectVehicles.value.reduce((s, v) => {
   const p = calcProfit(v.id)
   return s + (p?.net ?? 0)
-}, 0)
+}, 0))
 
-// 商談中の車のみの見込
-const negotiatingVehicles = mockVehicles.filter(v => ['negotiating', 'contracted', 'nameTransfer'].includes(v.status))
-const negotiatingRevenue = negotiatingVehicles.reduce((s, v) => s + v.listPrice, 0)
+const negotiatingVehicles = computed(() => store.vehicles.filter(v => ['negotiating', 'contracted', 'nameTransfer'].includes(v.status)))
+const negotiatingRevenue = computed(() => negotiatingVehicles.value.reduce((s, v) => s + v.listPrice, 0))
 
 // ---- 月次チャートデータ ----
-const monthlyData = [
+const monthlyData = computed(() => [
   { month: '7月',  sales: 6200000, profit: 980000 },
   { month: '8月',  sales: 7800000, profit: 1240000 },
   { month: '9月',  sales: 5400000, profit: 820000 },
   { month: '10月', sales: 8900000, profit: 1580000 },
   { month: '11月', sales: 7200000, profit: 1320000 },
-  { month: '12月', sales: thisMonthRevenue, profit: thisMonthProfit },
-]
-const maxSales = Math.max(...monthlyData.map(d => d.sales), 1)
+  { month: '12月', sales: thisMonthRevenue.value, profit: thisMonthProfit.value },
+])
+const maxSales = computed(() => Math.max(...monthlyData.value.map(d => d.sales), 1))
 
 // ---- 在庫サマリ ----
-const inventoryByStatus = [
-  { label: '在庫中',     status: 'inStock',      vehicles: mockVehicles.filter(v => v.status === 'inStock'), color: '#10B981', bg: '#ECFDF5' },
-  { label: '商談中',     status: 'negotiating',  vehicles: mockVehicles.filter(v => v.status === 'negotiating'), color: '#F59E0B', bg: '#FFFBEB' },
-  { label: '委託中',     status: 'consigning',   vehicles: mockVehicles.filter(v => v.status === 'consigning'), color: '#8B5CF6', bg: '#F5F3FF' },
-  { label: '入庫済/受注', status: 'arrived',      vehicles: mockVehicles.filter(v => ['arrived', 'ordered'].includes(v.status)), color: '#06B6D4', bg: '#ECFEFF' },
-  { label: '成約・名義変更', status: 'contracted', vehicles: mockVehicles.filter(v => ['contracted', 'nameTransfer'].includes(v.status)), color: '#EA0000', bg: '#FFF0F0' },
-]
+const inventoryByStatus = computed(() => [
+  { label: '在庫中',     status: 'inStock',      vehicles: store.vehicles.filter(v => v.status === 'inStock'), color: '#10B981', bg: '#ECFDF5' },
+  { label: '商談中',     status: 'negotiating',  vehicles: store.vehicles.filter(v => v.status === 'negotiating'), color: '#F59E0B', bg: '#FFFBEB' },
+  { label: '委託中',     status: 'consigning',   vehicles: store.vehicles.filter(v => v.status === 'consigning'), color: '#8B5CF6', bg: '#F5F3FF' },
+  { label: '入庫済/受注', status: 'arrived',      vehicles: store.vehicles.filter(v => ['arrived', 'ordered'].includes(v.status)), color: '#06B6D4', bg: '#ECFEFF' },
+  { label: '成約・名義変更', status: 'contracted', vehicles: store.vehicles.filter(v => ['contracted', 'nameTransfer'].includes(v.status)), color: '#EA0000', bg: '#FFF0F0' },
+])
 
-const urgentTasks = mockTasks.filter(t => t.status !== 'done' && t.priority === 'high')
-const recentSales = mockSales.slice().sort((a, b) => b.contractedAt.localeCompare(a.contractedAt)).slice(0, 4).map(s => {
-  const v = mockVehicles.find(v => v.id === s.vehicleId)
+const urgentTasks = computed(() => store.tasks.filter(t => t.status !== 'done' && t.priority === 'high'))
+const recentSales = computed(() => store.sales.slice().sort((a, b) => b.contractedAt.localeCompare(a.contractedAt)).slice(0, 4).map(s => {
+  const v = store.vehicles.find(v => v.id === s.vehicleId)
   return { ...s, vehicleName: v ? `${v.maker} ${v.model}` : '-' }
-})
-
-const getFP = (id?: string) => mockFPs.find(f => f.id === id)
+}))
 </script>
 
 <template>
@@ -118,8 +117,8 @@ const getFP = (id?: string) => mockFPs.find(f => f.id === id)
               <Car class="w-4 h-4 text-gray-500" />
             </div>
           </div>
-          <p class="text-2xl font-bold text-gray-900">{{ mockVehicles.filter(v => !['delivered','settled','cancelled'].includes(v.status)).length }}台</p>
-          <p class="text-xs text-gray-400 mt-1">商談中 {{ mockVehicles.filter(v=>v.status==='negotiating').length }}台 含む</p>
+          <p class="text-2xl font-bold text-gray-900">{{ store.vehicles.filter(v => !['delivered','settled','cancelled'].includes(v.status)).length }}台</p>
+          <p class="text-xs text-gray-400 mt-1">商談中 {{ store.vehicles.filter(v=>v.status==='negotiating').length }}台 含む</p>
         </div>
         <div class="card p-5">
           <div class="flex items-center justify-between mb-3">
@@ -192,10 +191,10 @@ const getFP = (id?: string) => mockFPs.find(f => f.id === id)
           <h2 class="text-sm font-semibold text-gray-700 mb-4">販売パイプライン</h2>
           <div class="space-y-3">
             <div v-for="p in [
-              { label: '商談中', count: mockVehicles.filter(v=>v.status==='negotiating').length, amount: mockVehicles.filter(v=>v.status==='negotiating').reduce((s,v)=>s+v.listPrice,0), color:'#F59E0B' },
-              { label: '成約',   count: mockVehicles.filter(v=>v.status==='contracted').length,  amount: mockVehicles.filter(v=>v.status==='contracted').reduce((s,v)=>s+v.listPrice,0), color:'#EA0000' },
-              { label: '名義変更中', count: mockVehicles.filter(v=>v.status==='nameTransfer').length, amount: mockVehicles.filter(v=>v.status==='nameTransfer').reduce((s,v)=>s+v.listPrice,0), color:'#EC4899' },
-              { label: '納車済', count: mockVehicles.filter(v=>v.status==='delivered').length, amount: mockVehicles.filter(v=>v.status==='delivered').reduce((s,v)=>s+v.listPrice,0), color:'#9CA3AF' },
+              { label: '商談中', count: store.vehicles.filter(v=>v.status==='negotiating').length, amount: store.vehicles.filter(v=>v.status==='negotiating').reduce((s,v)=>s+v.listPrice,0), color:'#F59E0B' },
+              { label: '成約',   count: store.vehicles.filter(v=>v.status==='contracted').length,  amount: store.vehicles.filter(v=>v.status==='contracted').reduce((s,v)=>s+v.listPrice,0), color:'#EA0000' },
+              { label: '名義変更中', count: store.vehicles.filter(v=>v.status==='nameTransfer').length, amount: store.vehicles.filter(v=>v.status==='nameTransfer').reduce((s,v)=>s+v.listPrice,0), color:'#EC4899' },
+              { label: '納車済', count: store.vehicles.filter(v=>v.status==='delivered').length, amount: store.vehicles.filter(v=>v.status==='delivered').reduce((s,v)=>s+v.listPrice,0), color:'#9CA3AF' },
             ]" :key="p.label" class="flex items-center gap-3">
               <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="`background:${p.color};`"></span>
               <div class="flex-1 min-w-0">

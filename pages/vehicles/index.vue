@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Plus, Search, LayoutGrid, List, MapPin } from 'lucide-vue-next'
-import { mockVehicles, mockMembers, mockFPs } from '~/data/mock'
+import { useAppStore } from '~/stores/app'
 import type { VehicleType, VehicleStatus } from '~/types'
+
+const store = useAppStore()
 
 const searchQuery = ref('')
 const filterType = ref<VehicleType | 'all'>('all')
@@ -34,7 +36,7 @@ const statusBorderColors: Record<string, string> = {
 }
 
 const filteredVehicles = computed(() => {
-  return mockVehicles.filter(v => {
+  return store.vehicles.filter(v => {
     const matchSearch = !searchQuery.value ||
       `${v.maker} ${v.model} ${v.pickupLocation}`.includes(searchQuery.value)
     const matchType = filterType.value === 'all' || v.type === filterType.value
@@ -43,17 +45,17 @@ const filteredVehicles = computed(() => {
   })
 })
 
-const getMember = (id?: string) => mockMembers.find(m => m.id === id)
-const getFP = (id?: string) => mockFPs.find(f => f.id === id)
+const getMember = (id?: string) => store.members.find(m => m.id === id)
+const getFP = (id?: string) => store.fps.find(f => f.id === id)
 
 const totalListPrice = computed(() => filteredVehicles.value.reduce((s, v) => s + v.listPrice, 0))
 
-const statGroups = [
+const statGroups = computed(() => [
   { label: '在庫中',   statuses: ['inStock'],                              color: 'text-emerald-600', bg: 'bg-emerald-50' },
   { label: '商談中',   statuses: ['negotiating'],                          color: 'text-amber-600',   bg: 'bg-amber-50' },
   { label: '委託中',   statuses: ['consigning'],                           color: 'text-purple-600',  bg: 'bg-purple-50' },
   { label: '成約・納車', statuses: ['contracted','nameTransfer','delivered'], color: 'text-brand-600',   bg: 'bg-brand-50' },
-]
+])
 </script>
 
 <template>
@@ -69,7 +71,7 @@ const statGroups = [
         >
           <div :class="['w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0', item.bg]">
             <span :class="['text-lg font-bold', item.color]">
-              {{ mockVehicles.filter(v => item.statuses.includes(v.status)).length }}
+              {{ store.vehicles.filter(v => item.statuses.includes(v.status)).length }}
             </span>
           </div>
           <div>

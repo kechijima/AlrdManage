@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { Plus, Percent, Edit2, ToggleLeft, ToggleRight, Car, Package, Users, Handshake } from 'lucide-vue-next'
-import { mockFeePatterns, mockSales, mockGoods, mockVehicles, mockMembers, mockFPs } from '~/data/mock'
+import { useAppStore } from '~/stores/app'
 import type { FeePattern, FeeTargetBusiness, FeeTargetRole, FeeAppliedTo } from '~/types'
 
+const store = useAppStore()
 const activeTab = ref<'patterns' | 'summary'>('patterns')
-
-// ===== フィーパターン タブ =====
-const patterns = ref<FeePattern[]>(mockFeePatterns.map(p => ({ ...p })))
 
 const showAddForm = ref(false)
 const newPattern = reactive<Omit<FeePattern, 'id' | 'createdAt'>>({
@@ -40,11 +38,11 @@ const resetNewPattern = () => {
 
 const addPattern = () => {
   if (!newPattern.name || newPattern.rate <= 0) return
-  patterns.value.push({ ...newPattern, id: `fee${Date.now()}`, createdAt: new Date().toISOString().slice(0, 10) })
+  store.addFeePattern({ ...newPattern })
   resetNewPattern()
 }
 
-const toggleActive = (p: FeePattern) => { p.isActive = !p.isActive }
+const toggleActive = (p: FeePattern) => { store.updateFeePattern(p.id, { isActive: !p.isActive }) }
 
 // ===== フィー集計 タブ =====
 const summaryBusiness = ref<FeeTargetBusiness | 'all'>('all')
@@ -68,15 +66,14 @@ interface FeeRecord {
 
 const computedFees = computed<FeeRecord[]>(() => {
   const records: FeeRecord[] = []
-  const activePatterns = patterns.value.filter(p => p.isActive)
+  const activePatterns = store.feePatterns.filter(p => p.isActive)
 
   // 車両販売
-  mockSales.forEach(sale => {
-    const vehicle = mockVehicles.find(v => v.id === sale.vehicleId)
+  store.sales.forEach(sale => {
+    const vehicle = store.vehicles.find(v => v.id === sale.vehicleId)
     if (!vehicle) return
     const month = sale.contractedAt.slice(0, 7)
-    const expenses = 0  // シンプル化：経費合計は0とする
-    const grossProfit = sale.contractPrice - sale.discount - vehicle.purchasePrice - expenses
+    const grossProfit = sale.contractPrice - sale.discount - vehicle.purchasePrice
 
     activePatterns
       .filter(p => p.targetBusiness === 'vehicle' || p.targetBusiness === 'all')
@@ -87,8 +84,8 @@ const computedFees = computed<FeeRecord[]>(() => {
         if (base <= 0) return
 
         const target = p.targetRole === 'fp'
-          ? (sale.referredByFpId ? mockFPs.find(f => f.id === sale.referredByFpId)?.name ?? '不明' : null)
-          : (sale.assignedMemberId ? mockMembers.find(m => m.id === sale.assignedMemberId)?.name ?? '不明' : null)
+          ? (sale.referredByFpId ? store.fps.find(f => f.id === sale.referredByFpId)?.name ?? '不明' : null)
+          : (sale.assignedMemberId ? store.members.find(m => m.id === sale.assignedMemberId)?.name ?? '不明' : null)
 
         if (!target) return
         records.push({
@@ -108,7 +105,7 @@ const computedFees = computed<FeeRecord[]>(() => {
   })
 
   // 古物販売
-  mockGoods
+  store.goods
     .filter(g => g.soldPrice && g.soldAt)
     .forEach(g => {
       const month = g.soldAt!.slice(0, 7)
@@ -121,8 +118,8 @@ const computedFees = computed<FeeRecord[]>(() => {
           if (base <= 0) return
 
           const target = p.targetRole === 'fp'
-            ? (g.sourceFpId ? mockFPs.find(f => f.id === g.sourceFpId)?.name ?? '不明' : null)
-            : (g.assignedMemberId ? mockMembers.find(m => m.id === g.assignedMemberId)?.name ?? '不明' : null)
+            ? (g.sourceFpId ? store.fps.find(f => f.id === g.sourceFpId)?.name ?? '不明' : null)
+            : (g.assignedMemberId ? store.members.find(m => m.id === g.assignedMemberId)?.name ?? '不明' : null)
 
           if (!target) return
           records.push({
@@ -152,7 +149,7 @@ const filteredFees = computed(() => {
     }
     if (summaryMonth.value && r.month !== summaryMonth.value) return false
     if (summaryMember.value) {
-      const name = mockMembers.find(m => m.id === summaryMember.value)?.name
+      const name = store.members.find(m => m.id === summaryMember.value)?.name
       if (name && r.target !== name) return false
     }
     return true
@@ -194,7 +191,7 @@ const availableMonths = computed(() => {
         <div class="card p-4 flex justify-between items-center">
           <div>
             <h2 class="text-sm font-semibold text-gray-700">フィーパターン一覧</h2>
-            <p class="text-xs text-gray-400 mt-0.5">{{ patterns.length }}件 / 有効 {{ patterns.filter(p => p.isActive).length }}件</p>
+            <p class="text-xs text-gray-400 mt-0.5">{{ store.feePatterns.length }}件 / 有効 {{ store.feePatterns.filter(p => p.isActive).length }}件</p>
           </div>
           <button class="btn-primary" @click="showAddForm = !showAddForm">
             <Plus class="w-4 h-4" />パターン追加
@@ -252,7 +249,7 @@ const availableMonths = computed(() => {
 
         <!-- パターンリスト -->
         <div class="space-y-2">
-          <div v-for="p in patterns" :key="p.id" :class="['card p-4 flex flex-col md:flex-row md:items-center gap-3', !p.isActive && 'opacity-50']">
+          <div v-for="p in store.feePatterns" :key="p.id" :class="['card p-4 flex flex-col md:flex-row md:items-center gap-3', !p.isActive && 'opacity-50']">
             <div class="flex-1">
               <div class="flex items-center gap-2 flex-wrap mb-1.5">
                 <span class="font-semibold text-gray-900 text-sm">{{ p.name }}</span>
@@ -297,7 +294,7 @@ const availableMonths = computed(() => {
           </select>
           <select v-model="summaryMember" class="input text-xs py-1.5 w-auto">
             <option value="">全担当者・FP</option>
-            <option v-for="m in mockMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+            <option v-for="m in store.members" :key="m.id" :value="m.id">{{ m.name }}</option>
           </select>
           <div class="ml-auto text-right">
             <p class="text-xs text-gray-400">合計フィー</p>

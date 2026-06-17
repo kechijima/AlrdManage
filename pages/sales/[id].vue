@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ArrowLeft, Car, User, Handshake, CreditCard, Pencil } from 'lucide-vue-next'
-import { mockSales, mockVehicles, mockCustomers, mockFPs, mockMembers } from '~/data/mock'
+import { useAppStore } from '~/stores/app'
 
+const store = useAppStore()
 const route = useRoute()
-const sale = computed(() => mockSales.find(s => s.id === route.params.id))
-const vehicle = computed(() => mockVehicles.find(v => v.id === sale.value?.vehicleId))
-const customer = computed(() => mockCustomers.find(c => c.id === sale.value?.customerId))
-const fp = computed(() => mockFPs.find(f => f.id === sale.value?.referredByFpId))
-const member = computed(() => mockMembers.find(m => m.id === sale.value?.assignedMemberId))
+const sale = computed(() => store.sales.find(s => s.id === route.params.id))
+const vehicle = computed(() => store.vehicles.find(v => v.id === sale.value?.vehicleId))
+const customer = computed(() => store.customers.find(c => c.id === sale.value?.customerId))
+const fp = computed(() => store.fps.find(f => f.id === sale.value?.referredByFpId))
+const member = computed(() => store.members.find(m => m.id === sale.value?.assignedMemberId))
 
 const paymentLabels: Record<string, string> = { cash: '現金', loan: 'ローン', other: 'その他' }
 const loanStatusLabels: Record<string, string> = {

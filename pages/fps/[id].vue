@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { ArrowLeft, Phone, Mail, MapPin } from 'lucide-vue-next'
-import { mockFPs, mockSales, mockGoods, mockVehicles, mockCustomers } from '~/data/mock'
+import { useAppStore } from '~/stores/app'
 
+const store = useAppStore()
 const route = useRoute()
-const fp = computed(() => mockFPs.find(f => f.id === route.params.id))
-const fpSales = computed(() => mockSales.filter(s => s.referredByFpId === route.params.id))
-const fpGoods = computed(() => mockGoods.filter(g => g.sourceFpId === route.params.id))
+const fp = computed(() => store.fps.find(f => f.id === route.params.id))
+const fpSales = computed(() => store.sales.filter(s => s.referredByFpId === route.params.id))
+const fpGoods = computed(() => store.goods.filter(g => g.sourceFpId === route.params.id))
 
 const totalSalesAmount = computed(() => fpSales.value.reduce((s, sale) => s + sale.contractPrice, 0))
-const getVehicle = (id: string) => mockVehicles.find(v => v.id === id)
-const getCustomer = (id: string) => mockCustomers.find(c => c.id === id)
+const getVehicle = (id: string) => store.vehicles.find(v => v.id === id)
+const getCustomer = (id: string) => store.customers.find(c => c.id === id)
 </script>
 
 <template>

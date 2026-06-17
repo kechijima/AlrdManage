@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ArrowLeft, Pencil, Upload, FileText, Image as ImageIcon, ExternalLink, Package } from 'lucide-vue-next'
-import { mockGoods, mockFPs, mockCustomers, mockMembers } from '~/data/mock'
+import { useAppStore } from '~/stores/app'
 
+const store = useAppStore()
 const route = useRoute()
-const item = computed(() => mockGoods.find(g => g.id === route.params.id))
-const fp = computed(() => mockFPs.find(f => f.id === item.value?.sourceFpId))
-const customer = computed(() => mockCustomers.find(c => c.id === item.value?.sourceCustomerId))
-const member = computed(() => mockMembers.find(m => m.id === item.value?.assignedMemberId))
+const item = computed(() => store.goods.find(g => g.id === route.params.id))
+const fp = computed(() => store.fps.find(f => f.id === item.value?.sourceFpId))
+const customer = computed(() => store.customers.find(c => c.id === item.value?.sourceCustomerId))
+const member = computed(() => store.members.find(m => m.id === item.value?.assignedMemberId))
 
 const platformLabels: Record<string, string> = { mercari: 'メルカリ', yahoo_auction: 'ヤフオク', other: 'その他' }
 
@@ -45,7 +46,7 @@ const currentStep = computed(() => statusFlow.findIndex(s => s.key === item.valu
               <div>
                 <StatusBadge :status="item.status" />
                 <h2 class="text-xl font-bold text-gray-900 mt-1">{{ item.name }}</h2>
-                <p class="text-sm text-gray-500">{{ item.category }} / 状態: {{ item.condition }}</p>
+                <p class="text-sm text-gray-500">{{ item.mainCategory }} / {{ item.subCategory }} / 状態: {{ item.condition }}</p>
               </div>
             </div>
             <div class="text-right">

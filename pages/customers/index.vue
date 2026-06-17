@@ -1,12 +1,31 @@
 <script setup lang="ts">
-import { Plus, Search, User } from 'lucide-vue-next'
-import { mockCustomers, mockFPs } from '~/data/mock'
+import { Plus, Search, User, X, Check } from 'lucide-vue-next'
+import { useAppStore } from '~/stores/app'
 
+const store = useAppStore()
 const search = ref('')
+
+// ===== 顧客登録モーダル =====
+const showAdd = ref(false)
+const addForm = reactive({ name: '', nameKana: '', phone: '', email: '', address: '', referredByFpId: '' })
+const submitAdd = () => {
+  if (!addForm.name || !addForm.phone) return
+  store.addCustomer({
+    name: addForm.name,
+    nameKana: addForm.nameKana,
+    phone: addForm.phone,
+    email: addForm.email,
+    address: addForm.address,
+    referredByFpId: addForm.referredByFpId || undefined,
+    branchId: 'b1',
+  })
+  Object.assign(addForm, { name: '', nameKana: '', phone: '', email: '', address: '', referredByFpId: '' })
+  showAdd.value = false
+}
 const filtered = computed(() =>
-  mockCustomers.filter(c => !search.value || `${c.name} ${c.nameKana}`.includes(search.value))
+  store.customers.filter(c => !search.value || `${c.name} ${c.nameKana}`.includes(search.value))
 )
-const getFP = (id?: string) => mockFPs.find(f => f.id === id)
+const getFP = (id?: string) => store.fps.find(f => f.id === id)
 </script>
 
 <template>
@@ -19,7 +38,7 @@ const getFP = (id?: string) => mockFPs.find(f => f.id === id)
           <Search class="w-4 h-4 text-gray-400" />
           <input v-model="search" type="text" placeholder="氏名・フリガナで検索..." class="bg-transparent text-sm focus:outline-none w-full" />
         </div>
-        <button class="btn-primary"><Plus class="w-4 h-4" />顧客登録</button>
+        <button class="btn-primary" @click="showAdd = true"><Plus class="w-4 h-4" />顧客登録</button>
       </div>
 
       <div class="card overflow-hidden">
@@ -71,5 +90,49 @@ const getFP = (id?: string) => mockFPs.find(f => f.id === id)
         </div>
       </div>
     </main>
+
+    <!-- 顧客登録モーダル -->
+    <div v-if="showAdd" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-gray-900">顧客登録</h3>
+          <button @click="showAdd = false" class="text-gray-400 hover:text-gray-600"><X class="w-5 h-5" /></button>
+        </div>
+        <div>
+          <label class="label">氏名 <span class="text-red-500">*</span></label>
+          <input v-model="addForm.name" class="input" placeholder="田中 太郎" />
+        </div>
+        <div>
+          <label class="label">フリガナ</label>
+          <input v-model="addForm.nameKana" class="input" placeholder="タナカ タロウ" />
+        </div>
+        <div>
+          <label class="label">電話番号 <span class="text-red-500">*</span></label>
+          <input v-model="addForm.phone" class="input" placeholder="090-0000-0000" />
+        </div>
+        <div>
+          <label class="label">メールアドレス</label>
+          <input v-model="addForm.email" type="email" class="input" />
+        </div>
+        <div>
+          <label class="label">住所</label>
+          <input v-model="addForm.address" class="input" />
+        </div>
+        <div>
+          <label class="label">FP紹介</label>
+          <select v-model="addForm.referredByFpId" class="input">
+            <option value="">なし</option>
+            <option v-for="fp in store.fps" :key="fp.id" :value="fp.id">{{ fp.name }}</option>
+          </select>
+        </div>
+        <div class="flex gap-2 justify-end pt-2">
+          <button class="btn-secondary" @click="showAdd = false">キャンセル</button>
+          <button class="btn-primary" @click="submitAdd" :disabled="!addForm.name || !addForm.phone">
+            <Check class="w-4 h-4" />登録
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>

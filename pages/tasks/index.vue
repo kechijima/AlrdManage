@@ -1,18 +1,36 @@
 <script setup lang="ts">
-import { Plus, AlertCircle, Clock, CheckCircle, Car, ShoppingCart, Package } from 'lucide-vue-next'
-import { mockTasks, mockMembers, mockVehicles, mockSales, mockGoods } from '~/data/mock'
+import { Plus, AlertCircle, Clock, CheckCircle, Car, ShoppingCart, Package, X, Check } from 'lucide-vue-next'
+import { useAppStore } from '~/stores/app'
 
+const store = useAppStore()
+
+// ===== タスク追加モーダル =====
+const showAdd = ref(false)
+const addForm = reactive({ title: '', priority: 'medium' as 'high' | 'medium' | 'low', assignedMemberId: '', dueDate: '', status: 'todo' as 'todo' | 'inProgress' | 'done' })
+const submitAdd = () => {
+  if (!addForm.title) return
+  store.addTask({
+    title: addForm.title,
+    priority: addForm.priority,
+    status: addForm.status,
+    assignedMemberId: addForm.assignedMemberId || undefined,
+    dueDate: addForm.dueDate || undefined,
+    branchId: 'b1',
+  })
+  Object.assign(addForm, { title: '', priority: 'medium', assignedMemberId: '', dueDate: '', status: 'todo' })
+  showAdd.value = false
+}
 const filterStatus = ref<'all' | 'todo' | 'inProgress' | 'done'>('all')
 const filterMember = ref('all')
 const viewMode = ref<'board' | 'list'>('board')
 
-const getMember = (id?: string) => mockMembers.find(m => m.id === id)
+const getMember = (id?: string) => store.members.find(m => m.id === id)
 
 const getRelatedLabel = (type?: string, id?: string) => {
   if (!type || !id) return null
-  if (type === 'vehicle') { const v = mockVehicles.find(v => v.id === id); return v ? `${v.maker} ${v.model}` : null }
+  if (type === 'vehicle') { const v = store.vehicles.find(v => v.id === id); return v ? `${v.maker} ${v.model}` : null }
   if (type === 'sale') return `販売#${id}`
-  if (type === 'goods') { const g = mockGoods.find(g => g.id === id); return g?.name ?? null }
+  if (type === 'goods') { const g = store.goods.find(g => g.id === id); return g?.name ?? null }
   return null
 }
 
@@ -25,7 +43,7 @@ const priorityColors: Record<string, string> = {
 }
 const priorityLabels: Record<string, string> = { high: '高', medium: '中', low: '低' }
 
-const filtered = computed(() => mockTasks.filter(t => {
+const filtered = computed(() => store.tasks.filter(t => {
   const matchStatus = filterStatus.value === 'all' || t.status === filterStatus.value
   const matchMember = filterMember.value === 'all' || t.assignedMemberId === filterMember.value
   return matchStatus && matchMember
@@ -49,7 +67,7 @@ const getColumnTasks = (status: string) => filtered.value.filter(t => t.status =
         <div class="flex flex-wrap items-center gap-3">
           <select v-model="filterMember" class="input w-auto text-sm">
             <option value="all">全メンバー</option>
-            <option v-for="m in mockMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+            <option v-for="m in store.members" :key="m.id" :value="m.id">{{ m.name }}</option>
           </select>
           <div class="flex rounded-lg border border-gray-200 overflow-hidden">
             <button
@@ -59,7 +77,7 @@ const getColumnTasks = (status: string) => filtered.value.filter(t => t.status =
               @click="viewMode = view.key as any"
             >{{ view.label }}</button>
           </div>
-          <button class="btn-primary ml-auto"><Plus class="w-4 h-4" />タスク追加</button>
+          <button class="btn-primary ml-auto" @click="showAdd = true"><Plus class="w-4 h-4" />タスク追加</button>
         </div>
       </div>
 
@@ -142,5 +160,55 @@ const getColumnTasks = (status: string) => filtered.value.filter(t => t.status =
       </div>
 
     </main>
+
+    <!-- タスク追加モーダル -->
+    <div v-if="showAdd" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-gray-900">タスク追加</h3>
+          <button @click="showAdd = false" class="text-gray-400 hover:text-gray-600"><X class="w-5 h-5" /></button>
+        </div>
+        <div>
+          <label class="label">タイトル <span class="text-red-500">*</span></label>
+          <input v-model="addForm.title" class="input" placeholder="名義変更書類を確認する" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label">優先度</label>
+            <select v-model="addForm.priority" class="input">
+              <option value="high">高</option>
+              <option value="medium">中</option>
+              <option value="low">低</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">ステータス</label>
+            <select v-model="addForm.status" class="input">
+              <option value="todo">未着手</option>
+              <option value="inProgress">進行中</option>
+              <option value="done">完了</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="label">担当者</label>
+          <select v-model="addForm.assignedMemberId" class="input">
+            <option value="">未割当</option>
+            <option v-for="m in store.members" :key="m.id" :value="m.id">{{ m.name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">期日</label>
+          <input v-model="addForm.dueDate" type="date" class="input" />
+        </div>
+        <div class="flex gap-2 justify-end pt-2">
+          <button class="btn-secondary" @click="showAdd = false">キャンセル</button>
+          <button class="btn-primary" @click="submitAdd" :disabled="!addForm.title">
+            <Check class="w-4 h-4" />追加
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>

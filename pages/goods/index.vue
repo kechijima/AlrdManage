@@ -1,19 +1,20 @@
 <script setup lang="ts">
-import { Plus, Search, Upload, Package } from 'lucide-vue-next'
-import { mockGoods, mockFPs, mockCustomers, mockMembers } from '~/data/mock'
+import { Plus, Search, Package } from 'lucide-vue-next'
+import { useAppStore } from '~/stores/app'
 
+const store = useAppStore()
 const search = ref('')
 const filterStatus = ref('all')
 
-const filtered = computed(() => mockGoods.filter(g => {
-  const matchSearch = !search.value || g.name.includes(search.value) || g.category.includes(search.value)
+const filtered = computed(() => store.goods.filter(g => {
+  const matchSearch = !search.value || g.name.includes(search.value) || (g.mainCategory ?? '').includes(search.value)
   const matchStatus = filterStatus.value === 'all' || g.status === filterStatus.value
   return matchSearch && matchStatus
 }))
 
-const getFP = (id: string) => mockFPs.find(f => f.id === id)
-const getCustomer = (id: string) => mockCustomers.find(c => c.id === id)
-const getMember = (id?: string) => mockMembers.find(m => m.id === id)
+const getFP = (id: string) => store.fps.find(f => f.id === id)
+const getCustomer = (id: string) => store.customers.find(c => c.id === id)
+const getMember = (id?: string) => store.members.find(m => m.id === id)
 
 const platformLabels: Record<string, string> = { mercari: 'メルカリ', yahoo_auction: 'ヤフオク', other: 'その他' }
 </script>
@@ -26,11 +27,11 @@ const platformLabels: Record<string, string> = { mercari: 'メルカリ', yahoo_
       <!-- Stats -->
       <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div v-for="item in [
-          { label: '受領済', count: mockGoods.filter(g=>g.status==='received').length, color: 'text-blue-600' },
-          { label: '査定中', count: mockGoods.filter(g=>g.status==='assessing').length, color: 'text-yellow-600' },
-          { label: '出品中', count: mockGoods.filter(g=>g.status==='listed').length, color: 'text-green-600' },
-          { label: '売却済', count: mockGoods.filter(g=>g.status==='sold').length, color: 'text-indigo-600' },
-          { label: '精算済', count: mockGoods.filter(g=>g.status==='settled').length, color: 'text-gray-600' },
+          { label: '受領済', count: store.goods.filter(g=>g.status==='received').length, color: 'text-blue-600' },
+          { label: '査定中', count: store.goods.filter(g=>g.status==='assessing').length, color: 'text-yellow-600' },
+          { label: '出品中', count: store.goods.filter(g=>g.status==='listed').length, color: 'text-green-600' },
+          { label: '売却済', count: store.goods.filter(g=>g.status==='sold').length, color: 'text-indigo-600' },
+          { label: '精算済', count: store.goods.filter(g=>g.status==='settled').length, color: 'text-gray-600' },
         ]" :key="item.label" class="card p-4 text-center">
           <p class="text-xs text-gray-500">{{ item.label }}</p>
           <p :class="['text-2xl font-bold mt-1', item.color]">{{ item.count }}</p>
@@ -69,7 +70,7 @@ const platformLabels: Record<string, string> = { mercari: 'メルカリ', yahoo_
               </div>
               <div>
                 <p class="font-semibold text-gray-900 text-sm">{{ g.name }}</p>
-                <p class="text-xs text-gray-500">{{ g.category }} / 状態: {{ g.condition }}</p>
+                <p class="text-xs text-gray-500">{{ g.mainCategory }} / {{ g.subCategory }} / 状態: {{ g.condition }}</p>
               </div>
             </div>
             <StatusBadge :status="g.status" />

@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ArrowLeft, Phone, Mail, MapPin, Car, Package } from 'lucide-vue-next'
-import { mockCustomers, mockFPs, mockSales, mockVehicles, mockGoods } from '~/data/mock'
+import { useAppStore } from '~/stores/app'
 
+const store = useAppStore()
 const route = useRoute()
-const customer = computed(() => mockCustomers.find(c => c.id === route.params.id))
-const fp = computed(() => mockFPs.find(f => f.id === customer.value?.referredByFpId))
-const sales = computed(() => mockSales.filter(s => s.customerId === route.params.id))
-const goodsProvided = computed(() => mockGoods.filter(g => g.sourceCustomerId === route.params.id))
-const getVehicle = (id: string) => mockVehicles.find(v => v.id === id)
+const customer = computed(() => store.customers.find(c => c.id === route.params.id))
+const fp = computed(() => store.fps.find(f => f.id === customer.value?.referredByFpId))
+const sales = computed(() => store.sales.filter(s => s.customerId === route.params.id))
+const goodsProvided = computed(() => store.goods.filter(g => g.sourceCustomerId === route.params.id))
+const getVehicle = (id: string) => store.vehicles.find(v => v.id === id)
 </script>
 
 <template>

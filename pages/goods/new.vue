@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ArrowLeft, Upload, X, FileText, ImageIcon } from 'lucide-vue-next'
-import { mockFPs, mockCustomers, mockMembers } from '~/data/mock'
 import { MERCARI_CATEGORIES } from '~/types'
+import { useAppStore } from '~/stores/app'
+
+const store = useAppStore()
+const router = useRouter()
 
 const form = reactive({
   name: '', mainCategory: '', subCategory: '', condition: '',
@@ -20,6 +23,27 @@ watch(() => form.mainCategory, () => {
 })
 
 const attachments = ref<{ name: string; type: string }[]>([])
+
+const submit = () => {
+  if (!form.name || !form.mainCategory || !form.sourceFpId || !form.sourceCustomerId) return
+  store.addGoods({
+    name: form.name,
+    mainCategory: form.mainCategory,
+    subCategory: form.subCategory,
+    condition: form.condition,
+    sourceFpId: form.sourceFpId,
+    sourceCustomerId: form.sourceCustomerId,
+    receivedAt: form.receivedAt || new Date().toISOString().slice(0, 10),
+    assessedValue: form.assessedValue,
+    platform: (form.platform as any) || undefined,
+    listingPrice: form.listingPrice,
+    assignedMemberId: form.assignedMemberId || undefined,
+    notes: form.notes || undefined,
+    branchId: 'b1',
+    status: 'received',
+  })
+  router.push('/goods')
+}
 
 const handleFileChange = (e: Event) => {
   const files = (e.target as HTMLInputElement).files
@@ -84,14 +108,14 @@ const handleFileChange = (e: Event) => {
               <label class="label">取次FP <span class="text-red-500">*</span></label>
               <select v-model="form.sourceFpId" class="input">
                 <option value="">選択してください</option>
-                <option v-for="fp in mockFPs" :key="fp.id" :value="fp.id">{{ fp.name }}</option>
+                <option v-for="fp in store.fps" :key="fp.id" :value="fp.id">{{ fp.name }}</option>
               </select>
             </div>
             <div>
               <label class="label">提供者（FP顧客）<span class="text-red-500">*</span></label>
               <select v-model="form.sourceCustomerId" class="input">
                 <option value="">選択してください</option>
-                <option v-for="c in mockCustomers" :key="c.id" :value="c.id">{{ c.name }}</option>
+                <option v-for="c in store.customers" :key="c.id" :value="c.id">{{ c.name }}</option>
               </select>
             </div>
             <div>
@@ -126,7 +150,7 @@ const handleFileChange = (e: Event) => {
               <label class="label">担当メンバー</label>
               <select v-model="form.assignedMemberId" class="input">
                 <option value="">選択してください</option>
-                <option v-for="m in mockMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+                <option v-for="m in store.members" :key="m.id" :value="m.id">{{ m.name }}</option>
               </select>
             </div>
           </div>
@@ -164,7 +188,7 @@ const handleFileChange = (e: Event) => {
 
         <div class="flex gap-3 justify-end">
           <NuxtLink to="/goods" class="btn-secondary">キャンセル</NuxtLink>
-          <button class="btn-primary">登録する</button>
+          <button class="btn-primary" @click="submit">登録する</button>
         </div>
 
       </div>

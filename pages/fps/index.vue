@@ -1,10 +1,22 @@
 <script setup lang="ts">
-import { Plus, Handshake, TrendingUp } from 'lucide-vue-next'
-import { mockFPs, mockSales, mockGoods } from '~/data/mock'
+import { Plus, Handshake, TrendingUp, X, Check } from 'lucide-vue-next'
+import { useAppStore } from '~/stores/app'
 
-const fpStats = computed(() => mockFPs.map(fp => {
-  const fpSales = mockSales.filter(s => s.referredByFpId === fp.id)
-  const fpGoods = mockGoods.filter(g => g.sourceFpId === fp.id)
+const store = useAppStore()
+
+// ===== FP登録モーダル =====
+const showAddFP = ref(false)
+const addFPForm = reactive({ name: '', company: '', area: '', phone: '', email: '', status: 'active' as 'active' | 'inactive' })
+const submitAddFP = () => {
+  if (!addFPForm.name || !addFPForm.company) return
+  store.addFP({ ...addFPForm, branchId: 'b1', notes: '' })
+  Object.assign(addFPForm, { name: '', company: '', area: '', phone: '', email: '', status: 'active' })
+  showAddFP.value = false
+}
+
+const fpStats = computed(() => store.fps.map(fp => {
+  const fpSales = store.sales.filter(s => s.referredByFpId === fp.id)
+  const fpGoods = store.goods.filter(g => g.sourceFpId === fp.id)
   const salesAmount = fpSales.reduce((s, sale) => s + sale.contractPrice, 0)
   return {
     ...fp,
@@ -25,22 +37,22 @@ const fpStats = computed(() => mockFPs.map(fp => {
       <div class="grid grid-cols-3 gap-3">
         <div class="card p-4">
           <p class="text-xs text-gray-500">提携FP数</p>
-          <p class="text-2xl font-bold text-brand-600 mt-1">{{ mockFPs.length }}名</p>
+          <p class="text-2xl font-bold text-brand-600 mt-1">{{ store.fps.length }}名</p>
         </div>
         <div class="card p-4">
           <p class="text-xs text-gray-500">FP経由 成約件数</p>
-          <p class="text-2xl font-bold text-green-600 mt-1">{{ mockSales.filter(s=>s.referredByFpId).length }}件</p>
+          <p class="text-2xl font-bold text-green-600 mt-1">{{ store.sales.filter(s=>s.referredByFpId).length }}件</p>
         </div>
         <div class="card p-4">
           <p class="text-xs text-gray-500">FP経由 売上合計</p>
-          <p class="text-2xl font-bold text-indigo-600 mt-1">¥{{ mockSales.filter(s=>s.referredByFpId).reduce((s,sale)=>s+sale.contractPrice,0).toLocaleString() }}</p>
+          <p class="text-2xl font-bold text-indigo-600 mt-1">¥{{ store.sales.filter(s=>s.referredByFpId).reduce((s,sale)=>s+sale.contractPrice,0).toLocaleString() }}</p>
         </div>
       </div>
 
       <!-- Toolbar -->
       <div class="card p-4 flex justify-between items-center">
         <h2 class="text-sm font-semibold text-gray-700">FP一覧</h2>
-        <button class="btn-primary"><Plus class="w-4 h-4" />FP登録</button>
+        <button class="btn-primary" @click="showAddFP = true"><Plus class="w-4 h-4" />FP登録</button>
       </div>
 
       <!-- Cards -->
@@ -88,5 +100,51 @@ const fpStats = computed(() => mockFPs.map(fp => {
       </div>
 
     </main>
+
+    <!-- FP登録モーダル -->
+    <div v-if="showAddFP" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-gray-900">FP登録</h3>
+          <button @click="showAddFP = false" class="text-gray-400 hover:text-gray-600"><X class="w-5 h-5" /></button>
+        </div>
+        <div>
+          <label class="label">氏名 <span class="text-red-500">*</span></label>
+          <input v-model="addFPForm.name" class="input" placeholder="山田 健一" />
+        </div>
+        <div>
+          <label class="label">会社名 <span class="text-red-500">*</span></label>
+          <input v-model="addFPForm.company" class="input" placeholder="山田FPオフィス" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label">エリア</label>
+            <input v-model="addFPForm.area" class="input" placeholder="東京都" />
+          </div>
+          <div>
+            <label class="label">ステータス</label>
+            <select v-model="addFPForm.status" class="input">
+              <option value="active">有効</option>
+              <option value="inactive">休止</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="label">電話番号</label>
+          <input v-model="addFPForm.phone" class="input" placeholder="090-0000-0000" />
+        </div>
+        <div>
+          <label class="label">メールアドレス</label>
+          <input v-model="addFPForm.email" type="email" class="input" placeholder="fp@example.com" />
+        </div>
+        <div class="flex gap-2 justify-end pt-2">
+          <button class="btn-secondary" @click="showAddFP = false">キャンセル</button>
+          <button class="btn-primary" @click="submitAddFP" :disabled="!addFPForm.name || !addFPForm.company">
+            <Check class="w-4 h-4" />登録
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>

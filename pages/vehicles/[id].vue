@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ArrowLeft, Pencil, Plus, Trash2, Car, MapPin } from 'lucide-vue-next'
-import { mockVehicles, mockExpenses, mockMembers, mockFPs, mockCustomers } from '~/data/mock'
+import { ArrowLeft, Pencil, Plus, Trash2, Car, MapPin, X, Check } from 'lucide-vue-next'
+import { useAppStore } from '~/stores/app'
 
+const store = useAppStore()
 const route = useRoute()
-const vehicle = computed(() => mockVehicles.find(v => v.id === route.params.id))
-const expenses = computed(() => mockExpenses.filter(e => e.vehicleId === route.params.id))
+const vehicle = computed(() => store.vehicles.find(v => v.id === route.params.id))
+const expenses = computed(() => store.expenses.filter(e => e.vehicleId === route.params.id))
 
 const typeLabels: Record<string, string> = {
   inventory: '在庫販売', order: '注文販売', consignment: '委託販売',
@@ -43,9 +44,32 @@ const expenseCategoryColors: Record<string, string> = {
   other:        'bg-gray-100 text-gray-600',
 }
 
-const getMember = (id?: string) => mockMembers.find(m => m.id === id)
-const getFP = (id?: string) => mockFPs.find(f => f.id === id)
-const getCustomer = (id?: string) => mockCustomers.find(c => c.id === id)
+const getMember = (id?: string) => store.members.find(m => m.id === id)
+const getFP = (id?: string) => store.fps.find(f => f.id === id)
+const getCustomer = (id?: string) => store.customers.find(c => c.id === id)
+
+// ===== 経費追加 =====
+const showExpenseForm = ref(false)
+const expenseForm = reactive({ category: 'maintenance', description: '', amount: 0, date: new Date().toISOString().slice(0, 10) })
+const expenseCategories = [
+  { key: 'maintenance', label: '整備・修理' }, { key: 'transport', label: '陸送費' },
+  { key: 'travel', label: '交通費' }, { key: 'labor', label: '人件費' },
+  { key: 'registration', label: '名義変更' }, { key: 'bodywork', label: '板金・塗装' },
+  { key: 'insurance', label: '保険' }, { key: 'advertising', label: '広告' },
+  { key: 'misc', label: '諸経費' }, { key: 'other', label: 'その他' },
+]
+const submitExpense = () => {
+  if (!expenseForm.description || expenseForm.amount <= 0 || !vehicle.value) return
+  store.addExpense({
+    vehicleId: vehicle.value.id,
+    category: expenseForm.category as any,
+    description: expenseForm.description,
+    amount: expenseForm.amount,
+    date: expenseForm.date,
+  })
+  Object.assign(expenseForm, { category: 'maintenance', description: '', amount: 0, date: new Date().toISOString().slice(0, 10) })
+  showExpenseForm.value = false
+}
 
 const totalExpenses = computed(() => expenses.value.reduce((s, e) => s + e.amount, 0))
 const grossProfit = computed(() => (vehicle.value?.listPrice ?? 0) - (vehicle.value?.purchasePrice ?? 0))
@@ -180,7 +204,7 @@ const activeTab = ref<'info' | 'expenses' | 'profit'>('info')
           <div v-if="activeTab === 'expenses'" class="p-4">
             <div class="flex justify-between items-center mb-3">
               <p class="text-sm text-gray-600">経費 {{ expenses.length }}件 / 合計 <span class="font-semibold text-orange-500">¥{{ totalExpenses.toLocaleString() }}</span></p>
-              <button class="btn-primary text-xs py-1.5">
+              <button class="btn-primary text-xs py-1.5" @click="showExpenseForm = true">
                 <Plus class="w-3.5 h-3.5" />経費追加
               </button>
             </div>
@@ -206,7 +230,7 @@ const activeTab = ref<'info' | 'expenses' | 'profit'>('info')
                     <td class="table-cell text-gray-500">{{ e.date }}</td>
                     <td class="table-cell text-right font-mono font-medium">¥{{ e.amount.toLocaleString() }}</td>
                     <td class="table-cell">
-                      <button class="text-gray-300 hover:text-red-500 transition-colors"><Trash2 class="w-4 h-4" /></button>
+                      <button class="text-gray-300 hover:text-red-500 transition-colors" @click="store.removeExpense(e.id)"><Trash2 class="w-4 h-4" /></button>
                     </td>
                   </tr>
                   <tr v-if="expenses.length === 0">
@@ -277,5 +301,42 @@ const activeTab = ref<'info' | 'expenses' | 'profit'>('info')
 
       </div>
     </main>
+
+    <!-- 経費追加モーダル -->
+    <div v-if="showExpenseForm" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-gray-900">経費追加</h3>
+          <button @click="showExpenseForm = false" class="text-gray-400 hover:text-gray-600"><X class="w-5 h-5" /></button>
+        </div>
+        <div>
+          <label class="label">カテゴリ</label>
+          <select v-model="expenseForm.category" class="input">
+            <option v-for="c in expenseCategories" :key="c.key" :value="c.key">{{ c.label }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">内容 <span class="text-red-500">*</span></label>
+          <input v-model="expenseForm.description" class="input" placeholder="エンジンオイル交換" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label">金額（円）<span class="text-red-500">*</span></label>
+            <input v-model.number="expenseForm.amount" type="number" class="input" />
+          </div>
+          <div>
+            <label class="label">日付</label>
+            <input v-model="expenseForm.date" type="date" class="input" />
+          </div>
+        </div>
+        <div class="flex gap-2 justify-end pt-2">
+          <button class="btn-secondary" @click="showExpenseForm = false">キャンセル</button>
+          <button class="btn-primary" @click="submitExpense" :disabled="!expenseForm.description || expenseForm.amount <= 0">
+            <Check class="w-4 h-4" />追加
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>

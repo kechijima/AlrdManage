@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ArrowLeft } from 'lucide-vue-next'
-import { mockMembers, mockFPs, mockCustomers } from '~/data/mock'
+import { useAppStore } from '~/stores/app'
+
+const store = useAppStore()
+const router = useRouter()
 
 const type = ref<'inventory' | 'order' | 'consignment'>('inventory')
 const form = reactive({
@@ -11,6 +14,40 @@ const form = reactive({
   listPrice: 0, consignmentOwnerId: '', assignedMemberId: '', referredByFpId: '',
   notes: '',
 })
+
+const errors = reactive({ maker: false, model: false, pickupLocation: false, listPrice: false })
+
+const submit = () => {
+  errors.maker = !form.maker
+  errors.model = !form.model
+  errors.pickupLocation = !form.pickupLocation
+  errors.listPrice = !form.listPrice
+  if (errors.maker || errors.model || errors.pickupLocation || errors.listPrice) return
+
+  store.addVehicle({
+    type: type.value,
+    maker: form.maker,
+    model: form.model,
+    pickupLocation: form.pickupLocation,
+    year: form.year,
+    mileage: form.mileage,
+    vin: form.vin,
+    color: form.color,
+    engineCC: form.engineCC,
+    inspectionDate: form.inspectionDate || undefined,
+    purchasePrice: form.purchasePrice,
+    purchaseFrom: form.purchaseFrom || undefined,
+    purchasedAt: form.purchasedAt || undefined,
+    listPrice: form.listPrice,
+    consignmentOwnerId: form.consignmentOwnerId || undefined,
+    assignedMemberId: form.assignedMemberId || undefined,
+    referredByFpId: form.referredByFpId || undefined,
+    notes: form.notes || undefined,
+    branchId: 'b1',
+    status: type.value === 'order' ? 'ordered' : 'inStock',
+  })
+  router.push('/vehicles')
+}
 </script>
 
 <template>
@@ -109,7 +146,7 @@ const form = reactive({
               <label class="label">委託オーナー</label>
               <select v-model="form.consignmentOwnerId" class="input">
                 <option value="">選択してください</option>
-                <option v-for="c in mockCustomers" :key="c.id" :value="c.id">{{ c.name }}</option>
+                <option v-for="c in store.customers" :key="c.id" :value="c.id">{{ c.name }}</option>
               </select>
             </div>
           </div>
@@ -123,14 +160,14 @@ const form = reactive({
               <label class="label">担当メンバー</label>
               <select v-model="form.assignedMemberId" class="input">
                 <option value="">選択してください</option>
-                <option v-for="m in mockMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+                <option v-for="m in store.members" :key="m.id" :value="m.id">{{ m.name }}</option>
               </select>
             </div>
             <div>
               <label class="label">FP紹介</label>
               <select v-model="form.referredByFpId" class="input">
                 <option value="">なし</option>
-                <option v-for="fp in mockFPs" :key="fp.id" :value="fp.id">{{ fp.name }}</option>
+                <option v-for="fp in store.fps" :key="fp.id" :value="fp.id">{{ fp.name }}</option>
               </select>
             </div>
           </div>
@@ -142,7 +179,7 @@ const form = reactive({
 
         <div class="flex gap-3 justify-end">
           <NuxtLink to="/vehicles" class="btn-secondary">キャンセル</NuxtLink>
-          <button class="btn-primary">登録する</button>
+          <button class="btn-primary" @click="submit">登録する</button>
         </div>
 
       </div>
