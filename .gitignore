@@ -10,6 +10,9 @@ node_modules
 # Firebase
 .firebase
 
+# Build artifacts
+dist
+
 # Environment
 .env
 .env.*
