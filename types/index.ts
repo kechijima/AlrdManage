@@ -207,6 +207,8 @@ export interface GoodsItem {
   platformFee?: number
   shippingCost?: number
   profit?: number
+  feeMode?: 'default' | 'custom'
+  feeDist?: { alrd: number; union: number; technical: number; planner: number }
   assignedMemberId?: string
   branchId: string
   status: GoodsStatus

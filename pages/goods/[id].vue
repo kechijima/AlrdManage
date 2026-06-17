@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Pencil, Upload, FileText, Image as ImageIcon, ExternalLink, Package, X, Check } from 'lucide-vue-next'
+import { ArrowLeft, Pencil, Upload, FileText, ExternalLink, Package, X, Check } from 'lucide-vue-next'
 import { useAppStore } from '~/stores/app'
 import { MERCARI_CATEGORIES } from '~/types'
 import type { GoodsStatus, Platform } from '~/types'
@@ -18,6 +18,8 @@ const goodsStatusLabels: Record<GoodsStatus, string> = {
   listed: '出品中', sold: '売却済', settled: '精算済', withdrawn: '取下げ',
 }
 
+const DEFAULT_FEE_DIST = { alrd: 10, union: 15, technical: 35, planner: 40 }
+
 // ===== 古物編集 =====
 const showEditForm = ref(false)
 const editForm = reactive({
@@ -31,10 +33,27 @@ const editForm = reactive({
   soldAt: '', platformFee: undefined as number | undefined,
   shippingCost: undefined as number | undefined,
   assignedMemberId: '', notes: '',
+  feeMode: 'default' as 'default' | 'custom',
+  feeDist: { ...DEFAULT_FEE_DIST },
 })
 
 const editSubCategories = computed(() => MERCARI_CATEGORIES[editForm.mainCategory] ?? [])
 watch(() => editForm.mainCategory, () => { editForm.subCategory = '' })
+
+const editNetProfit = computed(() => {
+  if (!editForm.soldPrice) return 0
+  return editForm.soldPrice - (editForm.platformFee ?? 0) - (editForm.shippingCost ?? 0)
+})
+
+const activeDist = computed(() =>
+  editForm.feeMode === 'default' ? DEFAULT_FEE_DIST : editForm.feeDist
+)
+
+const feeDistTotal = computed(() =>
+  editForm.feeMode === 'custom'
+    ? editForm.feeDist.alrd + editForm.feeDist.union + editForm.feeDist.technical + editForm.feeDist.planner
+    : 100
+)
 
 const openEdit = () => {
   if (!item.value) return
@@ -49,6 +68,8 @@ const openEdit = () => {
     platformFee: g.platformFee, shippingCost: g.shippingCost,
     assignedMemberId: g.assignedMemberId ?? '',
     notes: g.notes ?? '',
+    feeMode: g.feeMode ?? 'default',
+    feeDist: g.feeDist ? { ...g.feeDist } : { ...DEFAULT_FEE_DIST },
   })
   showEditForm.value = true
 }
@@ -72,6 +93,8 @@ const saveEdit = () => {
     platformFee: editForm.platformFee || undefined,
     shippingCost: editForm.shippingCost || undefined,
     profit: profit || undefined,
+    feeMode: editForm.feeMode,
+    feeDist: editForm.feeMode === 'custom' ? { ...editForm.feeDist } : undefined,
     assignedMemberId: editForm.assignedMemberId || undefined,
     notes: editForm.notes || undefined,
   })
@@ -88,6 +111,14 @@ const statusFlow = [
 ]
 
 const currentStep = computed(() => statusFlow.findIndex(s => s.key === item.value?.status))
+
+// 詳細ページの利益内訳用
+const detailFeeDist = computed(() => {
+  if (!item.value) return DEFAULT_FEE_DIST
+  return item.value.feeMode === 'custom' && item.value.feeDist
+    ? item.value.feeDist
+    : DEFAULT_FEE_DIST
+})
 </script>
 
 <template>
@@ -207,7 +238,7 @@ const currentStep = computed(() => statusFlow.findIndex(s => s.key === item.valu
               <span class="font-mono">¥{{ item.soldPrice.toLocaleString() }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-gray-600">手数料 ({{ item.platform === 'mercari' ? '10%' : '—' }})</span>
+              <span class="text-gray-600">手数料</span>
               <span class="font-mono text-red-500">- ¥{{ (item.platformFee ?? 0).toLocaleString() }}</span>
             </div>
             <div class="flex justify-between">
@@ -217,6 +248,28 @@ const currentStep = computed(() => statusFlow.findIndex(s => s.key === item.valu
             <div class="flex justify-between pt-2 border-t border-gray-200 font-bold">
               <span class="text-brand-700">純利益</span>
               <span class="font-mono text-brand-700">¥{{ (item.profit ?? 0).toLocaleString() }}</span>
+            </div>
+          </div>
+          <!-- フィー内訳 -->
+          <div class="mt-4 pt-4 border-t border-gray-100">
+            <p class="text-xs font-semibold text-gray-500 mb-2">利益配分（{{ item.feeMode === 'custom' ? '自由設定' : 'デフォルト' }}）</p>
+            <div class="space-y-1.5 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-600">ALRD（{{ detailFeeDist.alrd }}%）</span>
+                <span class="font-mono text-gray-800">¥{{ Math.round((item.profit ?? 0) * detailFeeDist.alrd / 100).toLocaleString() }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">組合費（{{ detailFeeDist.union }}%）</span>
+                <span class="font-mono text-gray-800">¥{{ Math.round((item.profit ?? 0) * detailFeeDist.union / 100).toLocaleString() }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">テクニカルフィー（{{ detailFeeDist.technical }}%）</span>
+                <span class="font-mono text-gray-800">¥{{ Math.round((item.profit ?? 0) * detailFeeDist.technical / 100).toLocaleString() }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">プランナーフィー（{{ detailFeeDist.planner }}%）</span>
+                <span class="font-mono text-gray-800">¥{{ Math.round((item.profit ?? 0) * detailFeeDist.planner / 100).toLocaleString() }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -316,11 +369,91 @@ const currentStep = computed(() => statusFlow.findIndex(s => s.key === item.valu
             <input v-model.number="editForm.shippingCost" type="number" class="input" />
           </div>
         </div>
-        <div v-if="editForm.soldPrice && editForm.soldPrice > 0" class="p-3 bg-emerald-50 rounded-lg text-sm">
-          純利益目安: <span class="font-bold text-emerald-700">
-            ¥{{ (editForm.soldPrice - (editForm.platformFee ?? 0) - (editForm.shippingCost ?? 0)).toLocaleString() }}
-          </span>
+
+        <!-- フィー計算パターン -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="label mb-0">利益配分パターン</label>
+            <div class="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+              <button
+                :class="['px-3 py-1.5 font-medium transition-colors', editForm.feeMode === 'default' ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50']"
+                @click="editForm.feeMode = 'default'"
+              >デフォルト</button>
+              <button
+                :class="['px-3 py-1.5 font-medium transition-colors', editForm.feeMode === 'custom' ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50']"
+                @click="editForm.feeMode = 'custom'"
+              >自由設定</button>
+            </div>
+          </div>
+
+          <!-- デフォルト表示 -->
+          <div v-if="editForm.feeMode === 'default'" class="grid grid-cols-2 gap-2 text-xs text-gray-600">
+            <div class="flex justify-between p-2 bg-gray-50 rounded-lg">
+              <span>ALRD</span><span class="font-bold">10%</span>
+            </div>
+            <div class="flex justify-between p-2 bg-gray-50 rounded-lg">
+              <span>組合費</span><span class="font-bold">15%</span>
+            </div>
+            <div class="flex justify-between p-2 bg-gray-50 rounded-lg">
+              <span>テクニカルフィー</span><span class="font-bold">35%</span>
+            </div>
+            <div class="flex justify-between p-2 bg-gray-50 rounded-lg">
+              <span>プランナーフィー</span><span class="font-bold">40%</span>
+            </div>
+          </div>
+
+          <!-- 自由設定 -->
+          <div v-else class="space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="label text-xs">ALRD（%）</label>
+                <input v-model.number="editForm.feeDist.alrd" type="number" min="0" max="100" class="input text-sm" />
+              </div>
+              <div>
+                <label class="label text-xs">組合費（%）</label>
+                <input v-model.number="editForm.feeDist.union" type="number" min="0" max="100" class="input text-sm" />
+              </div>
+              <div>
+                <label class="label text-xs">テクニカルフィー（%）</label>
+                <input v-model.number="editForm.feeDist.technical" type="number" min="0" max="100" class="input text-sm" />
+              </div>
+              <div>
+                <label class="label text-xs">プランナーフィー（%）</label>
+                <input v-model.number="editForm.feeDist.planner" type="number" min="0" max="100" class="input text-sm" />
+              </div>
+            </div>
+            <div :class="['text-xs text-right font-medium', feeDistTotal === 100 ? 'text-emerald-600' : 'text-red-500']">
+              合計: {{ feeDistTotal }}%{{ feeDistTotal === 100 ? ' ✓' : '（100%になるよう調整してください）' }}
+            </div>
+          </div>
         </div>
+
+        <!-- 純利益プレビュー -->
+        <div v-if="editForm.soldPrice && editForm.soldPrice > 0" class="p-3 bg-emerald-50 rounded-lg space-y-2">
+          <div class="flex justify-between items-center text-sm">
+            <span class="font-medium text-emerald-800">純利益目安</span>
+            <span class="font-bold text-emerald-700 text-base">¥{{ editNetProfit.toLocaleString() }}</span>
+          </div>
+          <div class="space-y-1 text-xs text-emerald-700 border-t border-emerald-200 pt-2">
+            <div class="flex justify-between">
+              <span>ALRD（{{ activeDist.alrd }}%）</span>
+              <span class="font-mono">¥{{ Math.round(editNetProfit * activeDist.alrd / 100).toLocaleString() }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>組合費（{{ activeDist.union }}%）</span>
+              <span class="font-mono">¥{{ Math.round(editNetProfit * activeDist.union / 100).toLocaleString() }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>テクニカルフィー（{{ activeDist.technical }}%）</span>
+              <span class="font-mono">¥{{ Math.round(editNetProfit * activeDist.technical / 100).toLocaleString() }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>プランナーフィー（{{ activeDist.planner }}%）</span>
+              <span class="font-mono">¥{{ Math.round(editNetProfit * activeDist.planner / 100).toLocaleString() }}</span>
+            </div>
+          </div>
+        </div>
+
         <div>
           <label class="label">出品URL</label>
           <input v-model="editForm.listingUrl" class="input" placeholder="https://..." />
@@ -338,7 +471,8 @@ const currentStep = computed(() => statusFlow.findIndex(s => s.key === item.valu
         </div>
         <div class="flex gap-2 justify-end pt-2">
           <button class="btn-secondary" @click="showEditForm = false">キャンセル</button>
-          <button class="btn-primary" @click="saveEdit" :disabled="!editForm.name">
+          <button class="btn-primary" @click="saveEdit"
+            :disabled="!editForm.name || (editForm.feeMode === 'custom' && feeDistTotal !== 100)">
             <Check class="w-4 h-4" />保存
           </button>
         </div>

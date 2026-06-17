@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, UserCog, Mail, Shield, Car, Package, LayoutGrid, X, Check } from 'lucide-vue-next'
+import { Plus, UserCog, Mail, Car, Package, LayoutGrid, X, Check } from 'lucide-vue-next'
 import { useAppStore } from '~/stores/app'
 import type { MemberDivision, MemberRole } from '~/types'
 
@@ -101,11 +101,8 @@ const addMember = () => {
           </div>
 
           <div class="flex gap-2">
-            <button class="btn-secondary flex-1 text-xs py-1.5 justify-center" @click="openEdit(m)">
+            <button class="btn-secondary w-full text-xs py-1.5 justify-center" @click="openEdit(m)">
               <UserCog class="w-3.5 h-3.5" />編集
-            </button>
-            <button class="btn-secondary flex-1 text-xs py-1.5 justify-center">
-              <Shield class="w-3.5 h-3.5" />権限変更
             </button>
           </div>
         </div>

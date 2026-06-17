@@ -107,6 +107,9 @@ export const useAppStore = defineStore('app', () => {
     const i = tasks.value.findIndex(t => t.id === id)
     if (i >= 0) Object.assign(tasks.value[i], patch)
   }
+  function removeTask(id: string) {
+    tasks.value = tasks.value.filter(t => t.id !== id)
+  }
 
   // ===== FeePattern =====
   function addFeePattern(data: Omit<FeePattern, 'id' | 'createdAt'>): FeePattern {
@@ -141,7 +144,7 @@ export const useAppStore = defineStore('app', () => {
     addCustomer, updateCustomer,
     addGoods, updateGoods,
     addSale, updateSale,
-    addTask, updateTask,
+    addTask, updateTask, removeTask,
     addFeePattern, updateFeePattern,
     addProspect, updateProspect, removeProspect,
   }

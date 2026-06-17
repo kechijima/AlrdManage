@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ArrowLeft, Car, User, Handshake, CreditCard, Pencil } from 'lucide-vue-next'
+import { ArrowLeft, Car, User, Handshake, CreditCard, Pencil, X, Check } from 'lucide-vue-next'
 import { useAppStore } from '~/stores/app'
+import type { SaleStatus, PaymentMethod } from '~/types'
 
 const store = useAppStore()
 const route = useRoute()
@@ -10,9 +11,64 @@ const customer = computed(() => store.customers.find(c => c.id === sale.value?.c
 const fp = computed(() => store.fps.find(f => f.id === sale.value?.referredByFpId))
 const member = computed(() => store.members.find(m => m.id === sale.value?.assignedMemberId))
 
-const paymentLabels: Record<string, string> = { cash: '現金', loan: 'ローン', other: 'その他' }
+const paymentLabels: Record<PaymentMethod, string> = { cash: '現金', loan: 'ローン', other: 'その他' }
 const loanStatusLabels: Record<string, string> = {
   applying: '申込中', reviewing: '審査中', approved: '承認', rejected: '否決', cancelled: 'キャンセル',
+}
+
+// ===== 販売編集 =====
+const showEditForm = ref(false)
+const editForm = reactive({
+  status: 'contracted' as SaleStatus,
+  contractPrice: 0,
+  discount: 0,
+  paymentMethod: 'cash' as PaymentMethod,
+  assignedMemberId: '',
+  referredByFpId: '',
+  contractedAt: '',
+  deliveryScheduledAt: '',
+  deliveredAt: '',
+  notes: '',
+})
+
+const openEdit = () => {
+  if (!sale.value) return
+  const s = sale.value
+  Object.assign(editForm, {
+    status: s.status,
+    contractPrice: s.contractPrice,
+    discount: s.discount,
+    paymentMethod: s.paymentMethod,
+    assignedMemberId: s.assignedMemberId ?? '',
+    referredByFpId: s.referredByFpId ?? '',
+    contractedAt: s.contractedAt,
+    deliveryScheduledAt: s.deliveryScheduledAt ?? '',
+    deliveredAt: s.deliveredAt ?? '',
+    notes: s.notes ?? '',
+  })
+  showEditForm.value = true
+}
+
+const saveEdit = () => {
+  if (!sale.value) return
+  store.updateSale(sale.value.id, {
+    status: editForm.status,
+    contractPrice: editForm.contractPrice,
+    discount: editForm.discount,
+    paymentMethod: editForm.paymentMethod,
+    assignedMemberId: editForm.assignedMemberId || undefined,
+    referredByFpId: editForm.referredByFpId || undefined,
+    contractedAt: editForm.contractedAt,
+    deliveryScheduledAt: editForm.deliveryScheduledAt || undefined,
+    deliveredAt: editForm.deliveredAt || undefined,
+    notes: editForm.notes || undefined,
+  })
+  showEditForm.value = false
+}
+
+const saleStatusLabels: Record<SaleStatus, string> = {
+  negotiating: '商談中', contracted: '成約', nameTransfer: '名義変更中',
+  delivering: '納車待ち', delivered: '納車済', settled: '精算済', cancelled: 'キャンセル',
 }
 </script>
 
@@ -26,7 +82,7 @@ const loanStatusLabels: Record<string, string> = {
           <NuxtLink to="/sales" class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
             <ArrowLeft class="w-4 h-4" />戻る
           </NuxtLink>
-          <button class="btn-secondary"><Pencil class="w-4 h-4" />編集</button>
+          <button class="btn-secondary" @click="openEdit"><Pencil class="w-4 h-4" />編集</button>
         </div>
 
         <!-- Status Header -->
@@ -163,5 +219,80 @@ const loanStatusLabels: Record<string, string> = {
 
       </div>
     </main>
+
+    <!-- 販売編集モーダル -->
+    <div v-if="showEditForm" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 my-auto">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-gray-900">販売情報を編集</h3>
+          <button @click="showEditForm = false" class="text-gray-400 hover:text-gray-600"><X class="w-5 h-5" /></button>
+        </div>
+        <div>
+          <label class="label">ステータス</label>
+          <select v-model="editForm.status" class="input">
+            <option v-for="(label, key) in saleStatusLabels" :key="key" :value="key">{{ label }}</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label">成約価格（円）</label>
+            <input v-model.number="editForm.contractPrice" type="number" class="input" />
+          </div>
+          <div>
+            <label class="label">値引（円）</label>
+            <input v-model.number="editForm.discount" type="number" class="input" />
+          </div>
+        </div>
+        <div>
+          <label class="label">支払方法</label>
+          <select v-model="editForm.paymentMethod" class="input">
+            <option value="cash">現金</option>
+            <option value="loan">ローン</option>
+            <option value="other">その他</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label">担当メンバー</label>
+            <select v-model="editForm.assignedMemberId" class="input">
+              <option value="">未割当</option>
+              <option v-for="m in store.members" :key="m.id" :value="m.id">{{ m.name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">FP紹介</label>
+            <select v-model="editForm.referredByFpId" class="input">
+              <option value="">なし</option>
+              <option v-for="f in store.fps" :key="f.id" :value="f.id">{{ f.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="label">成約日</label>
+          <input v-model="editForm.contractedAt" type="date" class="input" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label">納車予定日</label>
+            <input v-model="editForm.deliveryScheduledAt" type="date" class="input" />
+          </div>
+          <div>
+            <label class="label">実納車日</label>
+            <input v-model="editForm.deliveredAt" type="date" class="input" />
+          </div>
+        </div>
+        <div>
+          <label class="label">備考</label>
+          <textarea v-model="editForm.notes" class="input" rows="2"></textarea>
+        </div>
+        <div class="flex gap-2 justify-end pt-2">
+          <button class="btn-secondary" @click="showEditForm = false">キャンセル</button>
+          <button class="btn-primary" @click="saveEdit">
+            <Check class="w-4 h-4" />保存
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
